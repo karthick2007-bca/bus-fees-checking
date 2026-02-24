@@ -7,7 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect('mongodb+srv://karthi2142007:aMX3JVJipA92IDzZ@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority&appName=Cluster0', {
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:aMX3JVJipA92IDzZ@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
+mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -199,5 +200,5 @@ app.get('/api/reports', async (req, res) => {
   res.json(reports);
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
