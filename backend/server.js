@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/karthick', {
+mongoose.connect('mongodb+srv://karthi2142007:aMX3JVJipA92IDzZ@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -200,4 +200,4 @@ app.get('/api/reports', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
