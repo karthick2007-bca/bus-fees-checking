@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:aMX3JVJipA92IDzZ@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:Karthick2024@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
