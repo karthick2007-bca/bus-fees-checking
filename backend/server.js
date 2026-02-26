@@ -200,5 +200,20 @@ app.get('/api/reports', async (req, res) => {
   res.json(reports);
 });
 
+// Student login
+app.post('/api/students/login', async (req, res) => {
+  try {
+    const { phone, dob } = req.body;
+    const student = await Student.findOne({ phone, dob: new Date(dob) });
+    if (student) {
+      res.json(student);
+    } else {
+      res.status(404).json({ error: 'Student not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
