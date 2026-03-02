@@ -25,6 +25,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int paidStudents = 0;
   final TextEditingController searchController = TextEditingController();
   Set<String> selectedLocationIds = {};
+  bool _notificationShown = false;
 
   @override
   void initState() {
@@ -71,10 +72,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     setState(() {
       if (query.isEmpty) {
         filteredLocations = locations;
+        _notificationShown = false;
       } else {
         filteredLocations = locations.where((loc) => 
           loc['name'].toString().toLowerCase().contains(query.toLowerCase())
         ).toList();
+        if (filteredLocations.isEmpty && query.isNotEmpty && !_notificationShown) {
+          _notificationShown = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location not found'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
     });
   }
@@ -176,6 +188,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
               },
             ),
           IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationsPage()),
+              );
+            },
+          ),
+          IconButton(
             onPressed: widget.onLogout,
             icon: const Icon(Icons.logout),
           ),
@@ -220,26 +241,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: const Color(0xFF4F46E5),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.location_on, color: Colors.white, size: 24),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${locations.length}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AllLocationsPage(),
                               ),
-                            ),
-                            const Text(
-                              'Total Locations',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.white, size: 24),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${locations.length}',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                              const Text(
+                                'Total Locations',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -250,26 +281,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: const Color(0xFF10B981),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.people, color: Colors.white, size: 24),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$totalStudents',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AllStudentsPage(),
                               ),
-                            ),
-                            const Text(
-                              'Total Students',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              const Icon(Icons.people, color: Colors.white, size: 24),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$totalStudents',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                              const Text(
+                                'Total Students',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -381,28 +422,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                           subtitle: Text('Fee: ₹${location['fee']}'),
                           trailing: selectedLocationIds.isEmpty
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
-                                      onPressed: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => EditLocationPage(
-                                              locationId: location['id'],
-                                              locationName: location['name'],
-                                              currentFee: location['fee'].toDouble(),
-                                            ),
-                                          ),
-                                        );
-                                        if (result == true) _loadLocations();
-                                      },
-                                    ),
-                                    const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF94A3B8)),
-                                  ],
-                                )
+                              ? const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF94A3B8))
                               : null,
                         ),
                       );
@@ -561,6 +581,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             SizedBox(width: 16),
                             Text(
                               'Recycle Bin',
+                              style: TextStyle(
+                                color: Color(0xFF4F46E5),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () {
+                        setState(() => isMenuExpanded = false);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsPage(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.settings, color: Color(0xFF4F46E5), size: 32),
+                            SizedBox(width: 16),
+                            Text(
+                              'Settings',
                               style: TextStyle(
                                 color: Color(0xFF4F46E5),
                                 fontWeight: FontWeight.bold,
@@ -1394,6 +1447,412 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
                               onPressed: () => _permanentDelete(id),
                             ),
                           ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+
+class NotificationsPage extends StatefulWidget {
+  const NotificationsPage({super.key});
+
+  @override
+  State<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends State<NotificationsPage> {
+  List<dynamic> _notifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final notifications = await ApiService.getNotifications();
+      setState(() {
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteNotification(String id) async {
+    try {
+      await ApiService.deleteNotification(id);
+      _loadNotifications();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Payment Notifications'),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? const Center(child: Text('No notifications'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _notifications.length,
+                  itemBuilder: (context, index) {
+                    final notification = _notifications[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Color(0xFF10B981),
+                          child: Icon(Icons.payment, color: Colors.white),
+                        ),
+                        title: Text(notification['studentName'] ?? 'Student'),
+                        subtitle: Text(
+                          'Phone: ${notification['phone']}\n'
+                          'Amount: ₹${notification['amount']}\n'
+                          'Location: ${notification['location']}',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteNotification(notification['_id']),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+      ),
+      body: const Center(
+        child: Text('Settings Page'),
+      ),
+    );
+  }
+}
+
+
+class AllStudentsPage extends StatefulWidget {
+  const AllStudentsPage({super.key});
+
+  @override
+  State<AllStudentsPage> createState() => _AllStudentsPageState();
+}
+
+class _AllStudentsPageState extends State<AllStudentsPage> {
+  List<dynamic> _students = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+  }
+
+  Future<void> _loadStudents() async {
+    try {
+      final students = await ApiService.getStudents();
+      setState(() {
+        _students = students;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _editStudent(Map<String, dynamic> student) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditStudentPage(student: student),
+      ),
+    );
+    if (result == true) _loadStudents();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('All Students'),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _students.isEmpty
+              ? const Center(child: Text('No students found'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _students.length,
+                  itemBuilder: (context, index) {
+                    final student = _students[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          child: Text(
+                            student['name']?.isNotEmpty == true ? student['name'][0] : 'S',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Text(student['name'] ?? 'No Name'),
+                        subtitle: Text('Phone: ${student['phone']} | Class: ${student['studentClass']}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
+                          onPressed: () => _editStudent(student),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+class EditStudentPage extends StatefulWidget {
+  final Map<String, dynamic> student;
+
+  const EditStudentPage({super.key, required this.student});
+
+  @override
+  State<EditStudentPage> createState() => _EditStudentPageState();
+}
+
+class _EditStudentPageState extends State<EditStudentPage> {
+  late TextEditingController nameController;
+  late TextEditingController rollNoController;
+  late TextEditingController classController;
+  late TextEditingController parentNameController;
+  late TextEditingController phoneController;
+  late TextEditingController emailController;
+  late TextEditingController addressController;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController(text: widget.student['name']);
+    rollNoController = TextEditingController(text: widget.student['rollNo']);
+    classController = TextEditingController(text: widget.student['studentClass']);
+    parentNameController = TextEditingController(text: widget.student['parentName']);
+    phoneController = TextEditingController(text: widget.student['phone']);
+    emailController = TextEditingController(text: widget.student['email']);
+    addressController = TextEditingController(text: widget.student['address']);
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    rollNoController.dispose();
+    classController.dispose();
+    parentNameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    addressController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _updateStudent() async {
+    try {
+      await ApiService.addStudent({
+        ...widget.student,
+        'name': nameController.text,
+        'rollNo': rollNoController.text,
+        'studentClass': classController.text,
+        'parentName': parentNameController.text,
+        'phone': phoneController.text,
+        'email': emailController.text,
+        'address': addressController.text,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Student updated successfully!'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Student'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: rollNoController,
+              decoration: const InputDecoration(
+                labelText: 'Roll Number',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: classController,
+              decoration: const InputDecoration(
+                labelText: 'Class',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: parentNameController,
+              decoration: const InputDecoration(
+                labelText: 'Parent Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: phoneController,
+              decoration: const InputDecoration(
+                labelText: 'Phone',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: addressController,
+              decoration: const InputDecoration(
+                labelText: 'Address',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _updateStudent,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text('Update Student'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class AllLocationsPage extends StatefulWidget {
+  const AllLocationsPage({super.key});
+
+  @override
+  State<AllLocationsPage> createState() => _AllLocationsPageState();
+}
+
+class _AllLocationsPageState extends State<AllLocationsPage> {
+  List<dynamic> _locations = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocations();
+  }
+
+  Future<void> _loadLocations() async {
+    try {
+      final locations = await ApiService.getLocations();
+      setState(() {
+        _locations = locations;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _editLocation(Map<String, dynamic> location) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditLocationPage(
+          locationId: location['id'],
+          locationName: location['name'],
+          currentFee: location['fee'].toDouble(),
+        ),
+      ),
+    );
+    if (result == true) _loadLocations();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('All Locations'),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _locations.isEmpty
+              ? const Center(child: Text('No locations found'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _locations.length,
+                  itemBuilder: (context, index) {
+                    final location = _locations[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
+                        title: Text(location['name']),
+                        subtitle: Text('Fee: ₹${location['fee']}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
+                          onPressed: () => _editLocation(location),
                         ),
                       ),
                     );

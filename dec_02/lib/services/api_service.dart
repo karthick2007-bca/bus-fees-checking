@@ -95,4 +95,20 @@ class ApiService {
     }
     throw Exception('Failed to load transactions');
   }
+
+  static Future<List<dynamic>> getNotifications() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/notifications'));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception('Failed to load notifications');
+  }
+
+  static Future<void> markNotificationRead(String id) async {
+    await http.put(Uri.parse('$baseUrl/api/notifications/$id'));
+  }
+
+  static Future<void> deleteNotification(String id) async {
+    await http.delete(Uri.parse('$baseUrl/api/notifications/$id'));
+  }
 }
