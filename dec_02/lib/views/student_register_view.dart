@@ -27,6 +27,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   final _formKey = GlobalKey<FormState>();
   final PaymentService _paymentService = PaymentService();
   bool _isFrameOpen = false;
+  String? _frameError;
+  bool _isLoadingRoutes = false;
 
   final nameCtrl = TextEditingController();
   final rollCtrl = TextEditingController();
@@ -132,6 +134,10 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   }
 
   Future<void> loadRoutes() async {
+    setState(() {
+      _isLoadingRoutes = true;
+      _frameError = null;
+    });
     try {
       final data = await ApiService.getLocations();
       print('Loaded locations: $data');
@@ -141,13 +147,15 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           name: loc['name'] ?? '',
           fee: (loc['fee'] as num).toDouble(),
         )).toList();
+        _isLoadingRoutes = false;
       });
       print('Routes count: ${routes.length}');
     } catch (e) {
       print("Error loading routes: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading locations: $e')),
-      );
+      setState(() {
+        _frameError = e.toString();
+        _isLoadingRoutes = false;
+      });
     }
   }
 
@@ -314,7 +322,64 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Edit Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Locations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => setState(() => _isFrameOpen = false),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Edit Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: _isLoadingRoutes
+                          ? const Center(child: CircularProgressIndicator())
+                          : _frameError != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.error, color: Colors.red, size: 48),
+                                      const SizedBox(height: 8),
+                                      Text('Error: $_frameError', textAlign: TextAlign.center),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: loadRoutes,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : routes.isEmpty
+                                  ? const Center(child: Text('No locations available'))
+                                  : ListView.builder(
+                                      itemCount: routes.length,
+                                      itemBuilder: (context, index) {
+                                        final route = routes[index];
+                                        return Card(
+                                          margin: const EdgeInsets.only(bottom: 8),
+                                          child: ListTile(
+                                            title: Text(route.name),
+                                            subtitle: Text('Fee: ₹${route.fee}'),
+                                            trailing: selectedRoute?.id == route.id
+                                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                                : null,
+                                            onTap: () {
+                                              setState(() {
+                                                selectedRoute = route;
+                                                amountCtrl.text = route.fee.toString();
+                                                _isFrameOpen = false;
+                                              });
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    ),
+                    ),
                   ],
                 ),
               ),

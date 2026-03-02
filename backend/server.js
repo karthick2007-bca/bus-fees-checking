@@ -92,6 +92,19 @@ const transactionSchema = new mongoose.Schema({
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
+// Notification Schema
+const notificationSchema = new mongoose.Schema({
+  studentName: String,
+  phone: String,
+  amount: Number,
+  location: String,
+  paymentId: String,
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const Notification = mongoose.model('Notification', notificationSchema);
+
 // Routes
 app.get('/api/students', async (req, res) => {
   const students = await Student.find();
@@ -106,11 +119,35 @@ app.post('/api/students', async (req, res) => {
     // Update existing student
     Object.assign(existing, req.body);
     await existing.save();
+    
+    // Create notification if payment successful
+    if (req.body.status === 'succeed' && req.body.amountPaid > 0) {
+      await Notification.create({
+        studentName: req.body.name,
+        phone: req.body.phone,
+        amount: req.body.amountPaid,
+        location: req.body.location,
+        paymentId: req.body.payments?.[req.body.payments.length - 1]?.paymentId || 'N/A',
+      });
+    }
+    
     res.status(200).json(existing);
   } else {
     // Create new student
     const student = new Student(req.body);
     await student.save();
+    
+    // Create notification if payment successful
+    if (req.body.status === 'succeed' && req.body.amountPaid > 0) {
+      await Notification.create({
+        studentName: req.body.name,
+        phone: req.body.phone,
+        amount: req.body.amountPaid,
+        location: req.body.location,
+        paymentId: req.body.payments?.[req.body.payments.length - 1]?.paymentId || 'N/A',
+      });
+    }
+    
     res.status(201).json(student);
   }
 });
@@ -217,6 +254,24 @@ app.post('/api/students/login', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Get notifications
+app.get('/api/notifications', async (req, res) => {
+  const notifications = await Notification.find().sort({ createdAt: -1 });
+  res.json(notifications);
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id', async (req, res) => {
+  await Notification.findByIdAndUpdate(req.params.id, { read: true });
+  res.status(200).send();
+});
+
+// Delete notification
+app.delete('/api/notifications/:id', async (req, res) => {
+  await Notification.findByIdAndDelete(req.params.id);
+  res.status(204).send();
 });
 
 const PORT = process.env.PORT || 3000;
