@@ -1,10 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:Karthick2024@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
@@ -216,4 +220,10 @@ app.post('/api/students/login', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Serve frontend for all other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
