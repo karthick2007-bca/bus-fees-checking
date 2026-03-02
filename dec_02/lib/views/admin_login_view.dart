@@ -159,6 +159,8 @@ class _AdminLoginViewState extends State<AdminLoginView> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
+                  keyboardType: TextInputType.visiblePassword,
+                  textInputAction: TextInputAction.done,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Password is required';

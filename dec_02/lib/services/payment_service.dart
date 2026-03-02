@@ -22,11 +22,17 @@ class PaymentService {
     required String email,
   }) {
     var options = {
-      'key': 'rzp_test_1DP5mmOlF5G5ag', // Replace with your Razorpay key
+      'key': 'rzp_test_1DP5mmOlF5G5ag',
       'amount': (amount * 100).toInt(),
       'name': 'Fee Payment',
       'description': 'Student Fee Payment',
       'prefill': {'contact': phone, 'email': email},
+      'method': {
+        'upi': true,
+        'card': true,
+        'netbanking': true,
+        'wallet': true,
+      },
       'theme': {'color': '#4F46E5'}
     };
     _razorpay.open(options);
