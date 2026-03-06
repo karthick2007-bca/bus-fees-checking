@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
 import 'student_report.dart';
+import 'edit_report_page.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class StudentRegisterView extends StatefulWidget {
@@ -234,7 +235,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       appBar: AppBar(
         title: const Text('Student Registration'),
         leading: IconButton(
-          icon: const Text('>>>', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.menu),
           onPressed: () {
             setState(() {
               _isFrameOpen = !_isFrameOpen;
@@ -313,9 +314,9 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
               bottom: 0,
               width: 250,
               child: Container(
-                color: Colors.white,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
+                  color: Colors.white,
                   border: Border(right: BorderSide(color: Colors.grey.shade300, width: 2)),
                   boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
                 ),
@@ -325,7 +326,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Locations', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                        const Text('Edit Report', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
                         IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () => setState(() => _isFrameOpen = false),
@@ -333,52 +334,21 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                       ],
                     ),
                     const Divider(),
-                    const Text('Edit Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: _isLoadingRoutes
-                          ? const Center(child: CircularProgressIndicator())
-                          : _frameError != null
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.error, color: Colors.red, size: 48),
-                                      const SizedBox(height: 8),
-                                      Text('Error: $_frameError', textAlign: TextAlign.center),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: loadRoutes,
-                                        child: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : routes.isEmpty
-                                  ? const Center(child: Text('No locations available'))
-                                  : ListView.builder(
-                                      itemCount: routes.length,
-                                      itemBuilder: (context, index) {
-                                        final route = routes[index];
-                                        return Card(
-                                          margin: const EdgeInsets.only(bottom: 8),
-                                          child: ListTile(
-                                            title: Text(route.name),
-                                            subtitle: Text('Fee: ₹${route.fee}'),
-                                            trailing: selectedRoute?.id == route.id
-                                                ? const Icon(Icons.check_circle, color: Colors.green)
-                                                : null,
-                                            onTap: () {
-                                              setState(() {
-                                                selectedRoute = route;
-                                                amountCtrl.text = route.fee.toString();
-                                                _isFrameOpen = false;
-                                              });
-                                            },
-                                          ),
-                                        );
-                                      },
-                                    ),
+                    ListTile(
+                      title: const Text('Change Location'),
+                      leading: const Icon(Icons.edit_location),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditReportPage(
+                              phone: phoneCtrl.text,
+                              dob: dobCtrl.text,
+                              currentLocation: selectedRoute?.name ?? '',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

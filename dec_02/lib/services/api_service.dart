@@ -111,4 +111,12 @@ class ApiService {
   static Future<void> deleteNotification(String id) async {
     await http.delete(Uri.parse('$baseUrl/api/notifications/$id'));
   }
+
+  static Future<void> updateStudent(String phone, Map<String, dynamic> data) async {
+    await http.put(
+      Uri.parse('$baseUrl/api/students/$phone'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+  }
 }

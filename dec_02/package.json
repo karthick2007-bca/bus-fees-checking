@@ -1,0 +1,7 @@
+{
+  "name": "bus-fees-flutter-web",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "chmod +x build.sh && ./build.sh"
+  }
+}
