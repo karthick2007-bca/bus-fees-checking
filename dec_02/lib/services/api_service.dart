@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'https://bus-fees-checking.onrender.com';
+  // Change this URL based on your environment:
+  // For localhost: 'http://localhost:3000'
+  // For production: 'https://bus-fees-checking.vercel.app'
+  static const String baseUrl = 'http://localhost:5000';
   
   static Future<List<dynamic>> getStudents() async {
     final response = await http.get(Uri.parse('$baseUrl/api/students'));

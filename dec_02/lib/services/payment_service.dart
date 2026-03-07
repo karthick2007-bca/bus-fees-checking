@@ -22,7 +22,7 @@ class PaymentService {
     required String email,
   }) {
     var options = {
-      'key': 'rzp_test_1DP5mmOlF5G5ag',
+      'key': 'rzp_live_SNyLCysaEf0ooI',  // Your Live Key ID
       'amount': (amount * 100).toInt(),
       'name': 'Fee Payment',
       'description': 'Student Fee Payment',
