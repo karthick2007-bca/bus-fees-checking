@@ -5,7 +5,7 @@ class ApiService {
   // Change this URL based on your environment:
   // For localhost: 'http://localhost:3000'
   // For production: 'https://bus-fees-checking.vercel.app'
-  static const String baseUrl = 'http://localhost:3000';
+  static const String baseUrl = 'https://bus-fees-checking.vercel.app';
   
   static Future<List<dynamic>> getStudents() async {
     final response = await http.get(Uri.parse('$baseUrl/api/students'));
