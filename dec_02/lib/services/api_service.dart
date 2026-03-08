@@ -5,7 +5,7 @@ class ApiService {
   // Change this URL based on your environment:
   // For localhost: 'http://localhost:3000'
   // For production: 'https://bus-fees-checking.vercel.app'
-  static const String baseUrl = 'http://localhost:5000';
+  static const String baseUrl = 'http://localhost:3000';
   
   static Future<List<dynamic>> getStudents() async {
     final response = await http.get(Uri.parse('$baseUrl/api/students'));
@@ -50,7 +50,7 @@ class ApiService {
   static Future<void> deleteAllStudents() async {
     await http.delete(Uri.parse('$baseUrl/api/students'));
   }
-
+   
   static Future<void> saveReport(Map<String, dynamic> reportData) async {
     await http.post(
       Uri.parse('$baseUrl/api/reports'),
@@ -58,7 +58,7 @@ class ApiService {
       body: jsonEncode(reportData),
     );
   }
-
+   
   static Future<List<dynamic>> getReports() async {
     final response = await http.get(Uri.parse('$baseUrl/api/reports'));
     if (response.statusCode == 200) {
