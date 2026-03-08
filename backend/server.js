@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:Karthick2024@cluster0.nfyak0h.mongodb.net/?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:karthick2024@cluster0.nfyak0h.mongodb.net/karthick?appName=Cluster0';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'AaGkFvMKbn1QDgQ1m0mH80JI';
 
 mongoose.connect(MONGODB_URI, {
