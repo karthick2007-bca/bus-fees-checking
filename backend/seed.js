@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb://localhost:192.168.137.187/karthick')
+mongoose.connect('mongodb//localhost:27017/transitpay')
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.log(err));
 

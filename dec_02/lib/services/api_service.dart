@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Change this URL based on your environment:
-  // For localhost: 'http://localhost:3000'
-  // For production: 'https://bus-fees-checking.vercel.app'
   static const String baseUrl = 'https://bus-fees-checking.vercel.app';
   
   static Future<List<dynamic>> getStudents() async {
