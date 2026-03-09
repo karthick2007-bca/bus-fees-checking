@@ -28,17 +28,17 @@ class PaymentServiceImpl {
       'name': 'Fee Payment',
       'description': 'Student Fee Payment',
       'prefill': {'contact': phone, 'email': email},
-      'handler': (response) {
+      'handler': js.allowInterop((response) {
         _onSuccess?.call({
           'paymentId': response['razorpay_payment_id'],
           'orderId': response['razorpay_order_id'] ?? '',
           'signature': response['razorpay_signature'] ?? '',
         });
-      },
+      }),
       'modal': {
-        'ondismiss': () {
+        'ondismiss': js.allowInterop(() {
           _onFailure?.call({'message': 'Payment cancelled by user'});
-        }
+        })
       },
       'theme': {'color': '#4F46E5'}
     });
