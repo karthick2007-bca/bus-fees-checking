@@ -5,7 +5,11 @@ const path = require('path');
 require('dotenv').config({ silent: true });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Global error logger
@@ -30,6 +34,19 @@ mongoose.connect(MONGODB_URI, {
 })
 .then(() => console.log('MongoDB Connected to:', MONGODB_URI.split('@')[1]))
 .catch(err => console.error('MongoDB Connection Error:', err));
+
+// Add connection event listeners
+mongoose.connection.on('connected', () => {
+  console.log('Mongoose connected to MongoDB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected');
+});
 
 // Student Schema
 const studentSchema = new mongoose.Schema({
@@ -134,6 +151,13 @@ app.get('/api/students', async (req, res) => {
 
 app.post('/api/students', async (req, res) => {
   try {
+    console.log('Received student data:', req.body);
+    
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
     // Check if student exists by phone and dob
     const existing = await Student.findOne({ phone: req.body.phone, dob: req.body.dob });
     
