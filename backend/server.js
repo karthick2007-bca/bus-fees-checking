@@ -25,6 +25,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:karthi2024@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'AaGkFvMKbn1QDgQ1m0mH80JI';
 
+console.log('Connecting to MongoDB...');
+
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -32,16 +34,26 @@ mongoose.connect(MONGODB_URI, {
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
 })
-.then(() => console.log('MongoDB Connected to:', MONGODB_URI.split('@')[1]))
-.catch(err => console.error('MongoDB Connection Error:', err));
+.then(() => {
+  console.log('✓ MongoDB Connected successfully');
+  console.log('Database:', MONGODB_URI.split('/')[3].split('?')[0]);
+})
+.catch(err => {
+  console.error('✗ MongoDB Connection Error:', err.message);
+  // Retry connection after 5 seconds
+  setTimeout(() => {
+    console.log('Retrying MongoDB connection...');
+    mongoose.connect(MONGODB_URI).catch(e => console.error('Retry failed:', e.message));
+  }, 5000);
+});
 
-// Add connection event listeners
+// Connection event listeners
 mongoose.connection.on('connected', () => {
-  console.log('Mongoose connected to MongoDB');
+  console.log('Mongoose connected');
 });
 
 mongoose.connection.on('error', (err) => {
-  console.error('Mongoose connection error:', err);
+  console.error('Mongoose error:', err.message);
 });
 
 mongoose.connection.on('disconnected', () => {
