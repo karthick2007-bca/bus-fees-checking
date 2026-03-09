@@ -14,7 +14,6 @@
       "dest": "/index.html"
     }
   ],
-  "functions": {},
   "rewrites": [
     {
       "source": "/(.*)",
