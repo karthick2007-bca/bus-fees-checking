@@ -6,43 +6,66 @@ class ApiService {
   static const Duration timeout = Duration(seconds: 60);
   
   static Future<List<dynamic>> getStudents() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/students'),
-    ).timeout(timeout);
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/students'),
+      ).timeout(timeout);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('Server error: ${response.statusCode}');
+    } catch (e) {
+      print('getStudents error: $e');
+      throw Exception('Failed to load students: $e');
     }
-    throw Exception('Failed to load students');
   }
   
   static Future<void> addStudent(Map<String, dynamic> student) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/students'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(student),
-    ).timeout(timeout);
-    
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Failed to add student: ${response.body}');
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/students'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(student),
+      ).timeout(timeout);
+      
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Server returned ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('addStudent error: $e');
+      throw Exception('Failed to add student: $e');
     }
   }
   
   static Future<List<dynamic>> getLocations() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/locations'),
-    ).timeout(timeout);
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/locations'),
+      ).timeout(timeout);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('Server error: ${response.statusCode}');
+    } catch (e) {
+      print('getLocations error: $e');
+      throw Exception('Failed to load locations: $e');
     }
-    throw Exception('Failed to load locations');
   }
   
   static Future<void> addLocation(Map<String, dynamic> location) async {
-    await http.post(
-      Uri.parse('$baseUrl/api/locations'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(location),
-    );
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/locations'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(location),
+      ).timeout(timeout);
+    } catch (e) {
+      print('addLocation error: $e');
+      rethrow;
+    }
   }
   
   static Future<void> deleteLocation(String id) async {
