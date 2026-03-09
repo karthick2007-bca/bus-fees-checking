@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/payment_service.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class StudentReport extends StatefulWidget {
   final String phone;
@@ -36,15 +35,15 @@ class _StudentReportState extends State<StudentReport> {
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+  void _handlePaymentSuccess(dynamic response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Success: ${response.paymentId}'), backgroundColor: Colors.green),
+      SnackBar(content: Text('Payment Success: ${response['paymentId']}'), backgroundColor: Colors.green),
     );
   }
 
-  void _handlePaymentFailure(PaymentFailureResponse response) {
+  void _handlePaymentFailure(dynamic response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+      SnackBar(content: Text('Payment Failed: ${response['message']}'), backgroundColor: Colors.red),
     );
   }
 

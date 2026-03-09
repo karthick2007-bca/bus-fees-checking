@@ -1,18 +1,19 @@
-import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'payment_service_mobile.dart' if (dart.library.html) 'payment_service_web.dart';
 
 class PaymentService {
-  late Razorpay _razorpay;
+  final _impl = PaymentServiceImpl();
 
   void initialize({
-    required Function(PaymentSuccessResponse) onSuccess,
-    required Function(PaymentFailureResponse) onFailure,
+    required Function(dynamic) onSuccess,
+    required Function(dynamic) onFailure,
     required Function() onWallet,
   }) {
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, (response) => onSuccess(response as PaymentSuccessResponse));
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, (response) => onFailure(response as PaymentFailureResponse));
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, (_) => onWallet());
+    _impl.initialize(
+      onSuccess: onSuccess,
+      onFailure: onFailure,
+      onWallet: onWallet,
+    );
   }
 
   void openCheckout({
@@ -21,24 +22,15 @@ class PaymentService {
     required String phone,
     required String email,
   }) {
-    var options = {
-      'key': 'rzp_live_SNyLCysaEf0ooI',  // Your Live Key ID
-      'amount': (amount * 100).toInt(),
-      'name': 'Fee Payment',
-      'description': 'Student Fee Payment',
-      'prefill': {'contact': phone, 'email': email},
-      'method': {
-        'upi': true,
-        'card': true,
-        'netbanking': true,
-        'wallet': true,
-      },
-      'theme': {'color': '#4F46E5'}
-    };
-    _razorpay.open(options);
+    _impl.openCheckout(
+      amount: amount,
+      name: name,
+      phone: phone,
+      email: email,
+    );
   }
 
   void dispose() {
-    _razorpay.clear();
+    _impl.dispose();
   }
 }

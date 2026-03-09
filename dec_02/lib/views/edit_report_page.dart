@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class EditReportPage extends StatefulWidget {
   final String phone;
@@ -72,15 +71,15 @@ class _EditReportPageState extends State<EditReportPage> {
     }
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  void _handlePaymentSuccess(dynamic response) async {
     await ApiService.updateStudent(widget.phone, {
       'location': newLocation!.name,
       'amountPaid': newLocation!.fee,
     });
     
     await ApiService.saveTransaction({
-      'paymentId': response.paymentId,
-      'orderId': response.orderId,
+      'paymentId': response['paymentId'],
+      'orderId': response['orderId'] ?? '',
       'studentId': widget.phone,
       'amount': totalAmount,
       'status': 'success',
@@ -92,9 +91,9 @@ class _EditReportPageState extends State<EditReportPage> {
     Navigator.pop(context);
   }
 
-  void _handlePaymentFailure(PaymentFailureResponse response) {
+  void _handlePaymentFailure(dynamic response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+      SnackBar(content: Text('Payment Failed: ${response['message']}'), backgroundColor: Colors.red),
     );
   }
 

@@ -6,7 +6,6 @@ import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
 import 'student_report.dart';
 import 'edit_report_page.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class StudentRegisterView extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -101,18 +100,18 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  void _handlePaymentSuccess(dynamic response) async {
     await _saveStudent();
     await ApiService.saveTransaction({
-      'paymentId': response.paymentId,
-      'orderId': response.orderId,
+      'paymentId': response['paymentId'],
+      'orderId': response['orderId'] ?? '',
       'studentId': phoneCtrl.text,
       'studentName': nameCtrl.text,
       'amount': selectedRoute!.fee,
       'status': 'success',
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Success: ${response.paymentId}'), backgroundColor: Colors.green),
+      SnackBar(content: Text('Payment Success: ${response['paymentId']}'), backgroundColor: Colors.green),
     );
     if (mounted) {
       Navigator.pushReplacement(
@@ -128,9 +127,9 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     }
   }
 
-  void _handlePaymentFailure(PaymentFailureResponse response) {
+  void _handlePaymentFailure(dynamic response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+      SnackBar(content: Text('Payment Failed: ${response['message']}'), backgroundColor: Colors.red),
     );
   }
 
