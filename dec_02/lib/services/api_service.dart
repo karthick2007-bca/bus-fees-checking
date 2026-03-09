@@ -3,9 +3,12 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl = 'https://bus-fees-checking.vercel.app';
+  static const Duration timeout = Duration(seconds: 60);
   
   static Future<List<dynamic>> getStudents() async {
-    final response = await http.get(Uri.parse('$baseUrl/api/students'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/students'),
+    ).timeout(timeout);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
@@ -13,15 +16,21 @@ class ApiService {
   }
   
   static Future<void> addStudent(Map<String, dynamic> student) async {
-    await http.post(
+    final response = await http.post(
       Uri.parse('$baseUrl/api/students'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(student),
-    );
+    ).timeout(timeout);
+    
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to add student: ${response.body}');
+    }
   }
   
   static Future<List<dynamic>> getLocations() async {
-    final response = await http.get(Uri.parse('$baseUrl/api/locations'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/locations'),
+    ).timeout(timeout);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     }
