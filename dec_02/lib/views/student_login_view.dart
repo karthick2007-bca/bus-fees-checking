@@ -27,6 +27,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
   bool _isLoading = false;
   bool _isCheckingReport = false;
   String? _errorMessage;
+  bool _obscurePassword = true;
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
@@ -174,7 +175,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
+                  obscureText: _obscurePassword,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Password is required';
@@ -185,7 +186,10 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                     hintText: 'YYYY-MM-DD',
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    suffixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),

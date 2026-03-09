@@ -1,7 +1,6 @@
 library payment_service_web;
 
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'dart:js' show JsObject, context;
 
 class PaymentServiceImpl {
   Function(Map<String, dynamic>)? _onSuccess;
@@ -22,28 +21,30 @@ class PaymentServiceImpl {
     required String phone,
     required String email,
   }) {
-    final options = js.JsObject.jsify({
+    final handler = (response) {
+      _onSuccess?.call({
+        'paymentId': response['razorpay_payment_id'],
+        'orderId': response['razorpay_order_id'] ?? '',
+        'signature': response['razorpay_signature'] ?? '',
+      });
+    };
+
+    final ondismiss = () {
+      _onFailure?.call({'message': 'Payment cancelled by user'});
+    };
+
+    final options = JsObject.jsify({
       'key': 'rzp_live_SNyLCysaEf0ooI',
       'amount': (amount * 100).toInt(),
       'name': 'Fee Payment',
       'description': 'Student Fee Payment',
       'prefill': {'contact': phone, 'email': email},
-      'handler': js.allowInterop((response) {
-        _onSuccess?.call({
-          'paymentId': response['razorpay_payment_id'],
-          'orderId': response['razorpay_order_id'] ?? '',
-          'signature': response['razorpay_signature'] ?? '',
-        });
-      }),
-      'modal': {
-        'ondismiss': js.allowInterop(() {
-          _onFailure?.call({'message': 'Payment cancelled by user'});
-        })
-      },
+      'handler': handler,
+      'modal': {'ondismiss': ondismiss},
       'theme': {'color': '#4F46E5'}
     });
 
-    js.context.callMethod('openRazorpay', [options]);
+    context.callMethod('openRazorpay', [options]);
   }
 
   void dispose() {}

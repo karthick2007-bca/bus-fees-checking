@@ -22,6 +22,7 @@ class _AdminLoginViewState extends State<AdminLoginView> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
@@ -158,7 +159,7 @@ class _AdminLoginViewState extends State<AdminLoginView> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
+                  obscureText: _obscurePassword,
                   keyboardType: TextInputType.visiblePassword,
                   textInputAction: TextInputAction.done,
                   validator: (value) {
@@ -171,6 +172,10 @@ class _AdminLoginViewState extends State<AdminLoginView> {
                     hintText: '••••••••',
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
