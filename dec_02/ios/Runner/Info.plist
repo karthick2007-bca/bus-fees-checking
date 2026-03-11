@@ -51,6 +51,9 @@
 		<string>phonepe</string>
 		<string>paytm</string>
 		<string>gpay</string>
+		<string>tez</string>
+		<string>bhim</string>
+		<string>whatsapp</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
