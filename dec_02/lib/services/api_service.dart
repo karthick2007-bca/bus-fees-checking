@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'database_service.dart';
 
 class ApiService {
   static const String baseUrl = 'https://bus-fees-checking.vercel.app';
@@ -11,16 +12,21 @@ class ApiService {
         Uri.parse('$baseUrl/api/students'),
       ).timeout(timeout);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final students = jsonDecode(response.body);
+        for (var student in students) {
+          await DatabaseService.insertStudent(student);
+        }
+        return students;
       }
       throw Exception('Server error: ${response.statusCode}');
     } catch (e) {
-      print('getStudents error: $e');
-      throw Exception('Failed to load students: $e');
+      print('getStudents error: $e, loading from local DB');
+      return await DatabaseService.getStudents();
     }
   }
   
   static Future<void> addStudent(Map<String, dynamic> student) async {
+    await DatabaseService.insertStudent(student);
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/students'),
@@ -35,8 +41,7 @@ class ApiService {
         throw Exception('Server returned ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('addStudent error: $e');
-      throw Exception('Failed to add student: $e');
+      print('addStudent error: $e, saved locally');
     }
   }
   
@@ -46,16 +51,21 @@ class ApiService {
         Uri.parse('$baseUrl/api/locations'),
       ).timeout(timeout);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final locations = jsonDecode(response.body);
+        for (var location in locations) {
+          await DatabaseService.insertLocation(location);
+        }
+        return locations;
       }
       throw Exception('Server error: ${response.statusCode}');
     } catch (e) {
-      print('getLocations error: $e');
-      throw Exception('Failed to load locations: $e');
+      print('getLocations error: $e, loading from local DB');
+      return await DatabaseService.getLocations();
     }
   }
   
   static Future<void> addLocation(Map<String, dynamic> location) async {
+    await DatabaseService.insertLocation(location);
     try {
       await http.post(
         Uri.parse('$baseUrl/api/locations'),
@@ -63,8 +73,7 @@ class ApiService {
         body: jsonEncode(location),
       ).timeout(timeout);
     } catch (e) {
-      print('addLocation error: $e');
-      rethrow;
+      print('addLocation error: $e, saved locally');
     }
   }
   
@@ -113,11 +122,16 @@ class ApiService {
   }
 
   static Future<void> saveTransaction(Map<String, dynamic> transaction) async {
-    await http.post(
-      Uri.parse('$baseUrl/api/transactions'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(transaction),
-    );
+    await DatabaseService.insertTransaction(transaction);
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/transactions'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(transaction),
+      );
+    } catch (e) {
+      print('saveTransaction error: $e, saved locally');
+    }
   }
 
   static Future<List<dynamic>> getTransactions() async {
@@ -145,10 +159,15 @@ class ApiService {
   }
 
   static Future<void> updateStudent(String phone, Map<String, dynamic> data) async {
-    await http.put(
-      Uri.parse('$baseUrl/api/students/$phone'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(data),
-    );
+    await DatabaseService.updateStudent(phone, data);
+    try {
+      await http.put(
+        Uri.parse('$baseUrl/api/students/$phone'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+    } catch (e) {
+      print('updateStudent error: $e, updated locally');
+    }
   }
 }
