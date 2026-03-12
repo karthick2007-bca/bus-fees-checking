@@ -30,7 +30,7 @@ console.log('Connecting to MongoDB...');
 mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  maxPoolSize: 10,
+  maxPoolSize: 50,
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
 })
