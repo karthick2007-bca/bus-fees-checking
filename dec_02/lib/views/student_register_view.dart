@@ -49,7 +49,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     super.initState();
     amountCtrl.clear();
     loadRoutes();
-    _loadLoggedInStudent(); // Load only logged-in student
+    // Do not prefill registration form with previously logged-in student
     _paymentService.initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentFailure,
@@ -116,12 +116,13 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           
           // Find and select the route based on student's location
           if (loggedInStudent['location'] != null) {
-            selectedRoute = routes.firstWhere(
-              (r) => r.name == loggedInStudent['location'],
-              orElse: () => null as location_model.Route,
-            );
-            if (selectedRoute != null) {
+            final matches = routes.where((r) => r.name == loggedInStudent['location']).toList();
+            if (matches.isNotEmpty) {
+              selectedRoute = matches.first;
               amountCtrl.text = selectedRoute!.fee.toString();
+            } else {
+              selectedRoute = null;
+              amountCtrl.clear();
             }
           }
         });
