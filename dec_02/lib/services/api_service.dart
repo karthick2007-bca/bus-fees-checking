@@ -7,8 +7,17 @@ class ApiService {
   
   static Future<List<dynamic>> getStudents() async {
     try {
+      final uri = Uri.parse('$baseUrl/api/students').replace(queryParameters: {
+        't': DateTime.now().millisecondsSinceEpoch.toString(),
+      });
       final response = await http.get(
-        Uri.parse('$baseUrl/api/students'),
+        uri,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Accept': 'application/json',
+        },
       ).timeout(timeout);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -42,8 +51,17 @@ class ApiService {
   
   static Future<List<dynamic>> getLocations() async {
     try {
+      final uri = Uri.parse('$baseUrl/api/locations').replace(queryParameters: {
+        't': DateTime.now().millisecondsSinceEpoch.toString(),
+      });
       final response = await http.get(
-        Uri.parse('$baseUrl/api/locations'),
+        uri,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Accept': 'application/json',
+        },
       ).timeout(timeout);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);

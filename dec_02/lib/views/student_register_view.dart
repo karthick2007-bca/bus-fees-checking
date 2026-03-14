@@ -274,6 +274,20 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
       if (!mounted) return;
 
+      // Clear form after successful save
+      nameCtrl.clear();
+      rollCtrl.clear();
+      classCtrl.clear();
+      parentCtrl.clear();
+      addressCtrl.clear();
+      phoneCtrl.clear();
+      dobCtrl.clear();
+      amountCtrl.clear();
+      setState(() {
+        selectedRoute = null;
+      });
+      _formKey.currentState?.reset();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Student Registered Successfully ✅'),
