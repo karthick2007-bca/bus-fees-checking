@@ -161,4 +161,8 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<dynamic> loginStudent(String userId, String password) async {}
+
+  static Future<dynamic> checkHealth() async {}
 }

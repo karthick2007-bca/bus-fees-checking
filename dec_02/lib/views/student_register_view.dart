@@ -1,6 +1,5 @@
-import 'package:dec_02/models/student.dart';
-import 'package:dec_02/models/payment.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
@@ -29,60 +28,33 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   bool _isFrameOpen = false;
   String? _frameError;
   bool _isLoadingRoutes = false;
+  bool _isLoading = false;
 
+  // Text Controllers
   final nameCtrl = TextEditingController();
   final rollCtrl = TextEditingController();
   final classCtrl = TextEditingController();
   final parentCtrl = TextEditingController();
   final addressCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
+  
   final phoneCtrl = TextEditingController();
   final dobCtrl = TextEditingController();
   final amountCtrl = TextEditingController();
 
   List<location_model.Route> routes = [];
   location_model.Route? selectedRoute;
-  
-  get selectedlocation => null;
 
   @override
   void initState() {
     super.initState();
     amountCtrl.clear();
     loadRoutes();
-    _loadExistingStudent();
+    _loadLoggedInStudent(); // Load only logged-in student
     _paymentService.initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentFailure,
       onWallet: () => print('Wallet selected'),
     );
-  }
-
-  Future<void> _loadExistingStudent() async {
-    try {
-      final students = await ApiService.getStudents();
-      final loggedInStudent = students.firstWhere(
-        (s) => s['phone'] != null && s['phone'].toString().isNotEmpty,
-        orElse: () => {},
-      );
-
-      if (loggedInStudent.isNotEmpty) {
-        setState(() {
-          phoneCtrl.text = loggedInStudent['phone'] ?? '';
-          dobCtrl.text = loggedInStudent['dob']?.toString().split('T')[0] ?? '';
-          
-          if (loggedInStudent['name']?.isNotEmpty == true) {
-            nameCtrl.text = loggedInStudent['name'] ?? '';
-            rollCtrl.text = loggedInStudent['rollNo'] ?? '';
-            classCtrl.text = loggedInStudent['studentClass'] ?? '';
-            parentCtrl.text = loggedInStudent['parentName'] ?? '';
-            addressCtrl.text = loggedInStudent['address'] ?? '';
-          }
-        });
-      }
-    } catch (e) {
-      print('Error loading student: $e');
-    }
   }
 
   @override
@@ -93,63 +65,112 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     classCtrl.dispose();
     parentCtrl.dispose();
     addressCtrl.dispose();
-    emailCtrl.dispose();
+   
     phoneCtrl.dispose();
-    dobCtrl.dispose(); 
+    dobCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
   }
 
-  void _handlePaymentSuccess(dynamic response) async {
-    await _saveStudent();
-    await ApiService.saveTransaction({
-      'paymentId': response['paymentId'],
-      'orderId': response['orderId'] ?? '',
-      'studentId': phoneCtrl.text,
-      'studentName': nameCtrl.text,
-      'amount': selectedRoute!.fee,
-      'status': 'success',
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Success: ${response['paymentId']}'), backgroundColor: Colors.green),
-    );
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentReport(
-            phone: phoneCtrl.text,
-            dob: dobCtrl.text,
-            onLogout: widget.onBack,
-          ),
+  // ✅ LOAD ONLY LOGGED-IN STUDENT
+  Future<void> _loadLoggedInStudent() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Get logged-in user credentials from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final String? loggedInPhone = prefs.getString('loggedInPhone');
+      final String? loggedInDob = prefs.getString('loggedInDob');
+
+      print('Loading logged-in student: $loggedInPhone');
+
+      if (loggedInPhone == null || loggedInDob == null) {
+        print('No logged-in user found');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Fetch all students
+      final students = await ApiService.getStudents();
+      
+      // Find the specific logged-in student
+      final loggedInStudent = students.firstWhere(
+        (s) => s['phone']?.toString() == loggedInPhone && 
+               s['dob']?.toString().split('T')[0] == loggedInDob,
+        orElse: () => null,
+      );
+
+      if (loggedInStudent != null) {
+        print('Found logged-in student: ${loggedInStudent['name']}');
+        
+        setState(() {
+          // Set all fields with student data
+          phoneCtrl.text = loggedInStudent['phone']?.toString() ?? '';
+          dobCtrl.text = loggedInStudent['dob']?.toString().split('T')[0] ?? '';
+          nameCtrl.text = loggedInStudent['name']?.toString() ?? '';
+          rollCtrl.text = loggedInStudent['rollNo']?.toString() ?? '';
+          classCtrl.text = loggedInStudent['studentClass']?.toString() ?? '';
+          parentCtrl.text = loggedInStudent['parentName']?.toString() ?? '';
+          addressCtrl.text = loggedInStudent['address']?.toString() ?? '';
+          
+          
+          // Find and select the route based on student's location
+          if (loggedInStudent['location'] != null) {
+            selectedRoute = routes.firstWhere(
+              (r) => r.name == loggedInStudent['location'],
+              orElse: () => null as location_model.Route,
+            );
+            if (selectedRoute != null) {
+              amountCtrl.text = selectedRoute!.fee.toString();
+            }
+          }
+        });
+      } else {
+        print('Logged-in student not found in database');
+      }
+    } catch (e) {
+      print('Error loading logged-in student: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading student data: $e'),
+          backgroundColor: Colors.orange,
         ),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _handlePaymentFailure(dynamic response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Failed: ${response['message']}'), backgroundColor: Colors.red),
-    );
-  }
-
+  // ✅ LOAD ROUTES/LOCATIONS
   Future<void> loadRoutes() async {
     setState(() {
       _isLoadingRoutes = true;
       _frameError = null;
     });
+    
     try {
       final data = await ApiService.getLocations();
       print('Loaded locations: $data');
+      
       setState(() {
         routes = data.map((loc) => location_model.Route(
-          id: loc['id'] ?? '',
-          name: loc['name'] ?? '',
-          fee: (loc['fee'] as num).toDouble(),
+          id: loc['id']?.toString() ?? '',
+          name: loc['name']?.toString() ?? '',
+          fee: (loc['fee'] as num?)?.toDouble() ?? 0.0,
         )).toList();
         _isLoadingRoutes = false;
       });
+      
       print('Routes count: ${routes.length}');
+      
+      // After loading routes, try to select the student's route again
+      if (phoneCtrl.text.isNotEmpty && selectedRoute == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final loggedInPhone = prefs.getString('loggedInPhone');
+        if (loggedInPhone == phoneCtrl.text) {
+          _loadLoggedInStudent();
+        }
+      }
     } catch (e) {
       print("Error loading routes: $e");
       setState(() {
@@ -159,54 +180,98 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     }
   }
 
-  // ✅ SUBMIT STUDENT
-  Future<void> submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  // ✅ HANDLE PAYMENT SUCCESS
+  void _handlePaymentSuccess(dynamic response) async {
+    try {
+      await _saveStudent();
+      
+      await ApiService.saveTransaction({
+        'paymentId': response['paymentId']?.toString() ?? '',
+        'orderId': response['orderId']?.toString() ?? '',
+        'studentId': phoneCtrl.text,
+        'studentName': nameCtrl.text,
+        'amount': selectedRoute?.fee ?? 0,
+        'status': 'success',
+      });
 
-    if (selectedRoute == null) {
+      if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select location')),
+        SnackBar(
+          content: Text('Payment Successful!'),
+          backgroundColor: Colors.green,
+        ),
       );
-      return;
-    }
 
-    _paymentService.openCheckout(
-      amount: selectedRoute!.fee,
-      name: nameCtrl.text,
-      phone: phoneCtrl.text,
-      email: emailCtrl.text.isEmpty ? '${rollCtrl.text}@student.com' : emailCtrl.text,
+      // Navigate to report
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentReport(
+            phone: phoneCtrl.text,
+            dob: dobCtrl.text,
+            onLogout: () {
+              // Clear stored credentials on logout
+              _clearLoggedInUser();
+              widget.onBack();
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error in payment success handler: $e');
+    }
+  }
+
+  // ✅ HANDLE PAYMENT FAILURE
+  void _handlePaymentFailure(dynamic response) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment Failed: ${response['message'] ?? 'Unknown error'}'),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
+  // ✅ SAVE/UPDATE STUDENT
   Future<void> _saveStudent() async {
     try {
-      // Find existing student by phone and dob
+      // Get all students
       final students = await ApiService.getStudents();
+      
+      // Find existing student by phone and dob
       final existingStudent = students.firstWhere(
-        (s) => s['phone'] == phoneCtrl.text && s['dob']?.toString().split('T')[0] == dobCtrl.text,
-        orElse: () => {},
+        (s) => s['phone']?.toString() == phoneCtrl.text && 
+               s['dob']?.toString().split('T')[0] == dobCtrl.text,
+        orElse: () => null,
       );
 
-      // Update existing student data
-      await ApiService.addStudent({
-        'id': existingStudent['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      // Prepare student data
+      final studentData = {
+        'id': existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
         'name': nameCtrl.text,
         'rollNo': rollCtrl.text,
         'studentClass': classCtrl.text,
         'parentName': parentCtrl.text,
-        'location': selectedRoute!.name,
+        'location': selectedRoute?.name ?? '',
         'totalDue': 0,
-        'amountPaid': selectedRoute!.fee,
+        'amountPaid': selectedRoute?.fee ?? 0,
         'status': 'succeed',
         'address': addressCtrl.text,
-        'email': emailCtrl.text,
-        'phone': phoneCtrl.text,
-        'dob': dobCtrl.text,
-        'registrationDate': DateTime.now().toIso8601String(),
+       
+       
+        'registrationDate': existingStudent?['registrationDate'] ?? DateTime.now().toIso8601String(),
         'lastUpdated': DateTime.now().toIso8601String(),
-        'payments': [],
-        'locationHistory': [],
-      });
+        'payments': existingStudent?['payments'] ?? [],
+        'locationHistory': existingStudent?['locationHistory'] ?? [],
+      };
+
+      // Save to API
+      await ApiService.addStudent(studentData);
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -219,13 +284,101 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       widget.onRegisterSuccess();
     } catch (e) {
       print("Error saving student: $e");
+      
+      if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error saving student: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  // ✅ CLEAR LOGGED-IN USER
+  Future<void> _clearLoggedInUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('loggedInPhone');
+      await prefs.remove('loggedInDob');
+      print('Logged-in user cleared');
+    } catch (e) {
+      print('Error clearing logged-in user: $e');
+    }
+  }
+
+  // ✅ SUBMIT PAYMENT
+  Future<void> submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (selectedRoute == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select location'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Open payment checkout
+    _paymentService.openCheckout(
+      amount: selectedRoute!.fee,
+      name: nameCtrl.text,
+      phone: phoneCtrl.text, email: '',
+      
+    );
+  }
+
+  // ✅ BUILD FORM FIELD
+  Widget _field(TextEditingController ctrl, String label, {bool readOnly = false}) {
+    IconData icon;
+    switch (label) {
+      case 'Student Name':
+        icon = Icons.person;
+        break;
+      case 'Roll No':
+        icon = Icons.badge;
+        break;
+      case 'Std / Section':
+        icon = Icons.school;
+        break;
+      case 'Parent Name':
+        icon = Icons.family_restroom;
+        break;
+      case 'Address':
+        icon = Icons.home;
+        break;
+      
+      default:
+        icon = Icons.calendar_today;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        readOnly: readOnly,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          filled: readOnly,
+          fillColor: readOnly ? Colors.grey.shade100 : null,
+        ),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'Required';
+          if (label == 'Date of Birth') {
+            try {
+              DateTime.parse(v);
+            } catch (e) {
+              return 'Invalid date format. Use YYYY-MM-DD';
+            }
+          }
+          return null;
+        },
+      ),
+    );
   }
 
   @override
@@ -244,68 +397,83 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       ),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  _field(nameCtrl, 'Student Name'),
-                  _field(rollCtrl, 'Roll No'),
-                  _field(classCtrl, 'Std / Section'),
-                  _field(parentCtrl, 'Parent Name'),
-                  _field(addressCtrl, 'Address'),
+          // Main Content
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        _field(nameCtrl, 'Student Name'),
+                        _field(rollCtrl, 'Roll No'),
+                        _field(classCtrl, 'Std / Section'),
+                        _field(parentCtrl, 'Parent Name'),
+                        _field(addressCtrl, 'Address'),
+                        
 
-                  const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                  DropdownButtonFormField<location_model.Route>(
-                    value: selectedRoute,
-                    decoration: const InputDecoration(
-                      labelText: 'Location',
-                      prefixIcon: Icon(Icons.location_on),
+                        // Location Dropdown
+                        _isLoadingRoutes
+                            ? const Center(child: CircularProgressIndicator())
+                            : DropdownButtonFormField<location_model.Route>(
+                                value: selectedRoute,
+                                decoration: const InputDecoration(
+                                  labelText: 'Location',
+                                  prefixIcon: Icon(Icons.location_on),
+                                ),
+                                hint: const Text('Select Location'),
+                                items: routes.map((r) {
+                                  return DropdownMenuItem<location_model.Route>(
+                                    value: r,
+                                    child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})'),
+                                  );
+                                }).toList(),
+                                onChanged: (location_model.Route? route) {
+                                  setState(() {
+                                    selectedRoute = route;
+                                    amountCtrl.text = route?.fee.toString() ?? '';
+                                  });
+                                },
+                                validator: (v) => v == null ? 'Select location' : null,
+                              ),
+
+                        const SizedBox(height: 12),
+
+                        // Amount Field
+                        TextFormField(
+                          controller: amountCtrl,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Amount',
+                            prefixText: '₹ ',
+                            prefixIcon: Icon(Icons.currency_rupee),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Pay Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Pay Now'),
+                          ),
+                        ),
+                      ],
                     ),
-                    hint: const Text('Select Location'),
-                    items: routes.map((r) {
-                      return DropdownMenuItem<location_model.Route>(
-                        value: r,
-                        child: Text('${r.name} (₹${r.fee})'),
-                      );
-                    }).toList(),
-                    onChanged: (location_model.Route? route) {
-                      setState(() {
-                        selectedRoute = route;
-                        amountCtrl.text = route?.fee.toString() ?? '';
-                      });
-                    },
-                    validator: (v) => v == null ? 'Select location' : null,
                   ),
+                ),
 
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: amountCtrl,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount',
-                      prefixText: '₹ ',
-                      prefixIcon: Icon(Icons.currency_rupee),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: submit,
-                      child: const Text('Pay'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Side Menu Frame
           if (_isFrameOpen)
             Positioned(
               left: 0,
@@ -325,7 +493,14 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Edit Report', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                        const Text(
+                          'Edit Report',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4F46E5),
+                          ),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () => setState(() => _isFrameOpen = false),
@@ -334,8 +509,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     ),
                     const Divider(),
                     ListTile(
-                      title: const Text('Change Location'),
                       leading: const Icon(Icons.edit_location),
+                      title: const Text('Change Location'),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -346,7 +521,11 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                               currentLocation: selectedRoute?.name ?? '',
                             ),
                           ),
-                        );
+                        ).then((_) {
+                          // Refresh after returning from edit page
+                          _loadLoggedInStudent();
+                          loadRoutes();
+                        });
                       },
                     ),
                   ],
@@ -354,57 +533,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _field(TextEditingController ctrl, String label) {
-    IconData icon;
-    switch (label) {
-      case 'Student Name':
-        icon = Icons.person;
-        break;
-      case 'Roll No':
-        icon = Icons.badge;
-        break;
-      case 'Std / Section':
-        icon = Icons.school;
-        break;
-      case 'Parent Name':
-        icon = Icons.family_restroom;
-        break;
-      case 'Address':
-        icon = Icons.home;
-        break;
-      case 'Email':
-        icon = Icons.email;
-        break;
-      case 'Phone':
-        icon = Icons.phone;
-        break;
-      default:
-        icon = Icons.calendar_today;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: ctrl,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-        ),
-        validator: (v) {
-          if (v == null || v.isEmpty) return 'Required';
-          if (label.contains('Date of Birth')) {
-            try {
-              DateTime.parse(v);
-            } catch (e) {
-              return 'Invalid date format. Use YYYY-MM-DD';
-            }
-          }
-          return null;
-        },
       ),
     );
   }

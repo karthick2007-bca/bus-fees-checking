@@ -317,27 +317,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
     }
   }
 
-  _createEmptyStudent() {
-    // Return an empty student - this is just a placeholder
-    return Student.fromMap({
-      'id': '',
-      'name': '',
-      'rollNo': '',
-      'address': '',
-      'email': '',
-      'phone': '',
-      'parentName': '',
-      'class': '',
-      'dob': 0,
-      'location': '',
-      'amountPaid': 0,
-      'totalDue': 0,
-      'status': 'pending',
-      'lastUpdated': 0,
-      'payments': [],
-      'routeHistory': [],
-    });
-  }
+  
 }
 
 // Import the Student class properly
