@@ -2,62 +2,146 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ silent: true });
+require('dotenv').config();
 
 const app = express();
+
+// CORS configuration
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
-// Global error logger
+// Request logger
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// Serve static files from public directory
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB Connection
+// MongoDB Connection with proper error handling
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://karthi2142007:karthi2024@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority';
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'AaGkFvMKbn1QDgQ1m0mH80JI';
 
-console.log('Connecting to MongoDB...');
+console.log('Attempting to connect to MongoDB...');
+console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
-mongoose.connect(MONGODB_URI, {
+// Connection options
+const mongooseOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  maxPoolSize: 10,
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
-})
-.then(() => {
-  console.log('✓ MongoDB Connected successfully');
-  console.log('Database:', MONGODB_URI.split('/')[3].split('?')[0]);
-})
-.catch(err => {
-  console.error('✗ MongoDB Connection Error:', err.message);
-  // Retry connection after 5 seconds
-  setTimeout(() => {
-    console.log('Retrying MongoDB connection...');
-    mongoose.connect(MONGODB_URI).catch(e => console.error('Retry failed:', e.message));
-  }, 5000);
-});
+  connectTimeoutMS: 30000,
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  retryWrites: true,
+  retryReads: true
+};
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI, mongooseOptions)
+  .then(() => {
+    console.log('✅ MongoDB Connected successfully');
+    console.log('Database:', mongoose.connection.name);
+    console.log('Host:', mongoose.connection.host);
+    console.log('Port:', mongoose.connection.port);
+  })
+  .catch(err => {
+    console.error('❌ MongoDB Connection Error:');
+    console.error('Error Name:', err.name);
+    console.error('Error Message:', err.message);
+    console.error('Error Code:', err.code);
+    
+    if (err.name === 'MongoNetworkError') {
+      console.error('🔴 Network Error: Check if your IP is whitelisted in MongoDB Atlas');
+      console.error('Go to: https://cloud.mongodb.com -> Network Access -> Add IP Address');
+      console.error('Add 0.0.0.0/0 for testing or your server IP');
+    } else if (err.name === 'MongoParseError') {
+      console.error('🔴 Connection string parse error: Check your MongoDB URI format');
+    } else if (err.message.includes('authentication failed')) {
+      console.error('🔴 Authentication failed: Check username and password');
+    } else if (err.message.includes('getaddrinfo ENOTFOUND')) {
+      console.error('🔴 Cannot resolve MongoDB hostname: Check cluster name in URI');
+    }
+    
+    // Don't exit, let the app try to reconnect
+  });
 
 // Connection event listeners
 mongoose.connection.on('connected', () => {
-  console.log('Mongoose connected');
+  console.log('✅ Mongoose connected to MongoDB');
 });
 
 mongoose.connection.on('error', (err) => {
-  console.error('Mongoose error:', err.message);
+  console.error('❌ Mongoose connection error:', err.message);
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.log('Mongoose disconnected');
+  console.log('⚠️ Mongoose disconnected from MongoDB');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ Mongoose reconnected to MongoDB');
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('Mongoose connection closed due to app termination');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await mongoose.connection.close();
+  console.log('Mongoose connection closed due to app termination');
+  process.exit(0);
+});
+
+// Test database connection endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbState = mongoose.connection.readyState;
+    const states = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+    
+    const studentCount = await Student.countDocuments().maxTimeMS(5000);
+    
+    res.json({
+      status: 'OK',
+      database: {
+        state: states[dbState] || 'unknown',
+        connected: dbState === 1,
+        name: mongoose.connection.name || 'N/A',
+        host: mongoose.connection.host || 'N/A'
+      },
+      stats: {
+        totalStudents: studentCount
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      error: error.message,
+      database: {
+        state: 'error',
+        connected: false
+      }
+    });
+  }
 });
 
 // Student Schema
@@ -70,7 +154,7 @@ const studentSchema = new mongoose.Schema({
   phone: String,
   parentName: String,
   studentClass: String,
-  dob: Date,
+  dob: String, // Changed to String for easier comparison
   location: String,
   amountPaid: Number,
   totalDue: Number,
@@ -81,8 +165,10 @@ const studentSchema = new mongoose.Schema({
   reportGenerated: { type: Date, default: null },
 });
 
-studentSchema.index({ phone: 1, dob: 1 });
+// Create indexes
 studentSchema.index({ phone: 1 });
+studentSchema.index({ phone: 1, dob: 1 });
+
 const Student = mongoose.model('Student', studentSchema);
 
 // Report Schema
@@ -116,7 +202,7 @@ const Location = mongoose.model('Location', locationSchema);
 
 // Recycle Bin Schema
 const recycleBinSchema = new mongoose.Schema({
-  type: String, // 'student' or 'location'
+  type: String,
   data: Object,
   deletedAt: { type: Date, default: Date.now },
 });
@@ -151,7 +237,89 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ createdAt: -1 });
 const Notification = mongoose.model('Notification', notificationSchema);
 
-// Routes with error handling
+// ==================== API ROUTES ====================
+
+// STUDENT LOGIN - FIXED VERSION
+app.post('/api/students/login', async (req, res) => {
+  try {
+    // Check database connection first
+    if (mongoose.connection.readyState !== 1) {
+      console.log('Database not connected. State:', mongoose.connection.readyState);
+      return res.status(503).json({ 
+        error: 'Database service unavailable',
+        details: 'Please try again in a few moments'
+      });
+    }
+
+    const { phone, dob } = req.body;
+    
+    // Validate input
+    if (!phone || !dob) {
+      return res.status(400).json({ 
+        error: 'Phone number and date of birth are required' 
+      });
+    }
+
+    console.log('Login attempt:', { phone, dob });
+
+    // Clean the phone number (remove any non-numeric characters)
+    const cleanPhone = phone.toString().replace(/\D/g, '');
+    
+    // Try to find student with exact match (both as strings)
+    let student = await Student.findOne({ 
+      phone: cleanPhone, 
+      dob: dob.toString().trim() 
+    });
+
+    // If not found, try without cleaning (in case phone is stored differently)
+    if (!student) {
+      student = await Student.findOne({ 
+        phone: phone.toString().trim(), 
+        dob: dob.toString().trim() 
+      });
+    }
+
+    // If still not found, try with phone only (for debugging)
+    if (!student) {
+      console.log('Student not found with phone + dob, trying phone only search');
+      const studentsWithPhone = await Student.find({ phone: cleanPhone }).limit(5);
+      console.log('Found students with same phone:', studentsWithPhone.length);
+      
+      if (studentsWithPhone.length > 0) {
+        console.log('Sample student DOB:', studentsWithPhone[0].dob);
+        console.log('Provided DOB:', dob);
+      }
+    }
+
+    if (student) {
+      console.log('✅ Login successful for:', student.name);
+      
+      // Don't send sensitive data
+      const studentData = student.toObject();
+      delete studentData.payments;
+      delete studentData.locationHistory;
+      
+      res.json({
+        success: true,
+        student: studentData
+      });
+    } else {
+      console.log('❌ No student found with phone:', cleanPhone);
+      res.status(404).json({ 
+        error: 'Invalid phone number or date of birth',
+        details: 'Please check your credentials and try again'
+      });
+    }
+  } catch (err) {
+    console.error('❌ Login error:', err);
+    res.status(500).json({ 
+      error: 'Server error during login',
+      details: err.message 
+    });
+  }
+});
+
+// Get all students
 app.get('/api/students', async (req, res) => {
   try {
     const students = await Student.find().lean();
@@ -161,24 +329,21 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
+// Add/Update student
 app.post('/api/students', async (req, res) => {
   try {
     console.log('Received student data:', req.body);
     
-    // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
       return res.status(503).json({ error: 'Database not connected' });
     }
     
-    // Check if student exists by phone and dob
     const existing = await Student.findOne({ phone: req.body.phone, dob: req.body.dob });
     
     if (existing) {
-      // Update existing student
       Object.assign(existing, req.body);
       await existing.save();
       
-      // Create notification if payment successful
       if (req.body.status === 'succeed' && req.body.amountPaid > 0) {
         await Notification.create({
           studentName: req.body.name,
@@ -191,11 +356,9 @@ app.post('/api/students', async (req, res) => {
       
       res.status(200).json(existing);
     } else {
-      // Create new student
       const student = new Student(req.body);
       await student.save();
       
-      // Create notification if payment successful
       if (req.body.status === 'succeed' && req.body.amountPaid > 0) {
         await Notification.create({
           studentName: req.body.name,
@@ -213,6 +376,7 @@ app.post('/api/students', async (req, res) => {
   }
 });
 
+// Get all locations
 app.get('/api/locations', async (req, res) => {
   try {
     const locations = await Location.find().lean();
@@ -222,6 +386,7 @@ app.get('/api/locations', async (req, res) => {
   }
 });
 
+// Add/Update location
 app.post('/api/locations', async (req, res) => {
   try {
     const existing = await Location.findOne({ id: req.body.id });
@@ -241,6 +406,7 @@ app.post('/api/locations', async (req, res) => {
   }
 });
 
+// Delete location
 app.delete('/api/locations/:id', async (req, res) => {
   try {
     const location = await Location.findOne({ id: req.params.id });
@@ -254,6 +420,7 @@ app.delete('/api/locations/:id', async (req, res) => {
   }
 });
 
+// Get recycle bin items
 app.get('/api/recyclebin', async (req, res) => {
   try {
     const items = await RecycleBin.find().sort({ deletedAt: -1 }).lean();
@@ -263,6 +430,7 @@ app.get('/api/recyclebin', async (req, res) => {
   }
 });
 
+// Restore from recycle bin
 app.post('/api/recyclebin/restore/:id', async (req, res) => {
   try {
     const item = await RecycleBin.findById(req.params.id);
@@ -280,6 +448,7 @@ app.post('/api/recyclebin/restore/:id', async (req, res) => {
   }
 });
 
+// Delete from recycle bin
 app.delete('/api/recyclebin/:id', async (req, res) => {
   try {
     await RecycleBin.findByIdAndDelete(req.params.id);
@@ -289,6 +458,7 @@ app.delete('/api/recyclebin/:id', async (req, res) => {
   }
 });
 
+// Update student by phone
 app.put('/api/students/:phone', async (req, res) => {
   try {
     const student = await Student.findOneAndUpdate(
@@ -302,6 +472,7 @@ app.put('/api/students/:phone', async (req, res) => {
   }
 });
 
+// Delete all locations
 app.delete('/api/locations', async (req, res) => {
   try {
     await Location.deleteMany({});
@@ -338,21 +509,6 @@ app.get('/api/reports', async (req, res) => {
   }
 });
 
-// Student login
-app.post('/api/students/login', async (req, res) => {
-  try {
-    const { phone, dob } = req.body;
-    const student = await Student.findOne({ phone, dob: new Date(dob) });
-    if (student) {
-      res.json(student);
-    } else {
-      res.status(404).json({ error: 'Student not found' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Get notifications
 app.get('/api/notifications', async (req, res) => {
   try {
@@ -383,7 +539,7 @@ app.delete('/api/notifications/:id', async (req, res) => {
   }
 });
 
-// Transaction routes
+// Create transaction
 app.post('/api/transactions', async (req, res) => {
   try {
     const transaction = new Transaction(req.body);
@@ -394,6 +550,7 @@ app.post('/api/transactions', async (req, res) => {
   }
 });
 
+// Get all transactions
 app.get('/api/transactions', async (req, res) => {
   try {
     const transactions = await Transaction.find().sort({ createdAt: -1 }).lean();
@@ -403,17 +560,40 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// Debug endpoint to check database data
+app.get('/api/debug/students', async (req, res) => {
+  try {
+    const count = await Student.countDocuments();
+    const sample = await Student.find().limit(5).select('phone name dob');
+    
+    res.json({
+      totalStudents: count,
+      sampleStudents: sample,
+      dbConnected: mongoose.connection.readyState === 1
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Serve frontend for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Global error handler (must be last)
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(`ERROR: ${err.message}`);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('❌ Global error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message 
+  });
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📍 Debug students: http://localhost:${PORT}/api/debug/students`);
+});
