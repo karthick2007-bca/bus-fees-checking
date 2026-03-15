@@ -47,7 +47,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   @override
   void initState() {
     super.initState();
-    amountCtrl.clear();
+    _clearFormFields();
     loadRoutes();
     // Do not prefill registration form with previously logged-in student
     _paymentService.initialize(
@@ -70,6 +70,18 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     dobCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
+  }
+
+  // Helper: clear all form controllers (prevents stale values on web)
+  void _clearFormFields() {
+    nameCtrl.clear();
+    rollCtrl.clear();
+    classCtrl.clear();
+    parentCtrl.clear();
+    addressCtrl.clear();
+    phoneCtrl.clear();
+    dobCtrl.clear();
+    amountCtrl.clear();
   }
 
   // ✅ LOAD ONLY LOGGED-IN STUDENT
@@ -274,15 +286,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
       if (!mounted) return;
 
-      // Clear form after successful save
-      nameCtrl.clear();
-      rollCtrl.clear();
-      classCtrl.clear();
-      parentCtrl.clear();
-      addressCtrl.clear();
-      phoneCtrl.clear();
-      dobCtrl.clear();
-      amountCtrl.clear();
+      // Clear form after successful save and reset state
+      _clearFormFields();
       setState(() {
         selectedRoute = null;
       });
@@ -341,8 +346,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     _paymentService.openCheckout(
       amount: selectedRoute!.fee,
       name: nameCtrl.text,
-      phone: phoneCtrl.text, email: '',
-      
+      phone: phoneCtrl.text,
+      email: '',
     );
   }
 
@@ -375,6 +380,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       child: TextFormField(
         controller: ctrl,
         readOnly: readOnly,
+        autofillHints: const <String>[],
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
