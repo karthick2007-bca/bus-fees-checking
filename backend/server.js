@@ -577,6 +577,58 @@ app.get('/api/debug/students', async (req, res) => {
 });
 
 // Serve frontend for all other routes
+// Razorpay web checkout for desktop fallback
+app.get('/pay', (req, res) => {
+  const { amount, name, phone, email } = req.query;
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pay | Razorpay Checkout</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'; padding: 24px; }
+    .card { max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+    .btn { background: #4F46E5; color: #fff; border: 0; padding: 12px 16px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Student Fee Payment</h2>
+    <p>Name: ${name || ''}</p>
+    <p>Phone: ${phone || ''}</p>
+    <p>Amount: ₹${(parseInt(amount || '0')/100).toFixed(2)}</p>
+    <button id="pay" class="btn">Pay with Razorpay</button>
+  </div>
+
+  <script>
+    const options = {
+      key: 'rzp_live_SNyLCysaEf0ooI',
+      amount: ${Number.isFinite(parseInt(`${amount || 0}`)) ? amount : '0'},
+      currency: 'INR',
+      name: 'Fee Payment',
+      description: 'Student Fee Payment',
+      prefill: { contact: '${phone || ''}', email: '${email || ''}', name: '${name || ''}' },
+      theme: { color: '#4F46E5' },
+      handler: function (response) {
+        alert('Payment Success: ' + response.razorpay_payment_id);
+        window.close();
+      },
+      modal: { ondismiss: function() { alert('Payment cancelled'); } }
+    };
+    document.getElementById('pay').onclick = function() {
+      const rzp = new Razorpay(options);
+      rzp.open();
+    };
+  </script>
+</body>
+</html>`;
+  res.set('Content-Type', 'text/html');
+  res.send(html);
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
