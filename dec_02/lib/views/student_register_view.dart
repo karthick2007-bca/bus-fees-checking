@@ -47,9 +47,13 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Clear all form fields when opening a new registration form
     _clearFormFields();
+    
+    amountCtrl.clear();
     loadRoutes();
-    // Do not prefill registration form with previously logged-in student
+    
     _paymentService.initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentFailure,
@@ -72,7 +76,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     super.dispose();
   }
 
-  // Helper: clear all form controllers (prevents stale values on web)
+  // ✅ NEW METHOD: Clear all form fields
   void _clearFormFields() {
     nameCtrl.clear();
     rollCtrl.clear();
@@ -82,6 +86,9 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     phoneCtrl.clear();
     dobCtrl.clear();
     amountCtrl.clear();
+    setState(() {
+      selectedRoute = null;
+    });
   }
 
   // ✅ LOAD ONLY LOGGED-IN STUDENT
@@ -124,7 +131,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           classCtrl.text = loggedInStudent['studentClass']?.toString() ?? '';
           parentCtrl.text = loggedInStudent['parentName']?.toString() ?? '';
           addressCtrl.text = loggedInStudent['address']?.toString() ?? '';
-          
           
           // Find and select the route based on student's location
           if (loggedInStudent['location'] != null) {
@@ -216,8 +222,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         ),
       );
 
-      // Navigate to report
-      Navigator.pushReplacement(
+      // ✅ Navigate to report and clear all previous routes
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => StudentReport(
@@ -230,6 +236,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
             },
           ),
         ),
+        (route) => false, // This removes all previous routes
       );
     } catch (e) {
       print('Error in payment success handler: $e');
@@ -273,8 +280,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         'amountPaid': selectedRoute?.fee ?? 0,
         'status': 'succeed',
         'address': addressCtrl.text,
-       
-       
         'registrationDate': existingStudent?['registrationDate'] ?? DateTime.now().toIso8601String(),
         'lastUpdated': DateTime.now().toIso8601String(),
         'payments': existingStudent?['payments'] ?? [],
@@ -286,11 +291,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
       if (!mounted) return;
 
-      // Clear form after successful save and reset state
+      // Clear form after successful save
       _clearFormFields();
-      setState(() {
-        selectedRoute = null;
-      });
       _formKey.currentState?.reset();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -346,7 +348,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     _paymentService.openCheckout(
       amount: selectedRoute!.fee,
       name: nameCtrl.text,
-      phone: phoneCtrl.text,
+      phone: phoneCtrl.text, 
       email: '',
     );
   }
@@ -370,7 +372,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       case 'Address':
         icon = Icons.home;
         break;
-      
       default:
         icon = Icons.calendar_today;
     }
@@ -380,7 +381,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       child: TextFormField(
         controller: ctrl,
         readOnly: readOnly,
-        autofillHints: const <String>[],
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
