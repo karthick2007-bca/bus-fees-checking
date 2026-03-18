@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-// import '../models/student.dart'; // Uncomment if you need the Student model
 
 class StudentLoginView extends StatefulWidget {
   final VoidCallback onBack;
@@ -30,10 +30,29 @@ class _StudentLoginViewState extends State<StudentLoginView> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Clear any existing session when opening login page
+    _clearExistingSession();
+  }
+
+  @override
   void dispose() {
     _userIdController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Clear any existing session when opening login page
+  Future<void> _clearExistingSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('loggedInPhone');
+      await prefs.remove('loggedInDob');
+      print('Existing session cleared on login page open');
+    } catch (e) {
+      print('Error clearing session: $e');
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -53,14 +72,32 @@ class _StudentLoginViewState extends State<StudentLoginView> {
 
         // Find student by phone and dob
         final found = students.firstWhere(
-          (s) => s['phone']?.toString() == userId && 
-                 s['dob']?.toString().split('T')[0] == password,
+          (s) {
+            final studentPhone = s['phone']?.toString();
+            final studentDob = s['dob']?.toString().split('T')[0];
+            return studentPhone == userId && studentDob == password;
+          },
           orElse: () => null,
         );
 
         if (found != null) {
           print('Login successful for: ${found['name']}');
-          widget.onLoginSuccess(userId, password);
+          
+          // Clear previous session first
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('loggedInPhone');
+          await prefs.remove('loggedInDob');
+          
+          // Save new session
+          await prefs.setString('loggedInPhone', userId);
+          await prefs.setString('loggedInDob', password);
+          
+          print('New session saved for user: $userId');
+          
+          // Navigate to dashboard
+          if (mounted) {
+            widget.onLoginSuccess(userId, password);
+          }
         } else {
           setState(() {
             _errorMessage = 'Invalid User ID or Password. Please try again.';
@@ -71,10 +108,10 @@ class _StudentLoginViewState extends State<StudentLoginView> {
         setState(() {
           _errorMessage = 'Connection error. Please try again.';
         });
-      }
-      
-      if (mounted) {
-        setState(() => _isLoading = false);
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -92,17 +129,37 @@ class _StudentLoginViewState extends State<StudentLoginView> {
         final password = _passwordController.text.trim();
 
         final found = students.firstWhere(
-          (s) => s['phone']?.toString() == userId && 
-                 s['dob']?.toString().split('T')[0] == password,
+          (s) {
+            final studentPhone = s['phone']?.toString();
+            final studentDob = s['dob']?.toString().split('T')[0];
+            return studentPhone == userId && studentDob == password;
+          },
           orElse: () => null,
         );
 
         if (found != null) {
+          print('Check report - User found: ${found['name']}');
+          
+          // Clear previous session first
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('loggedInPhone');
+          await prefs.remove('loggedInDob');
+          
+          // Save new session for report check
+          await prefs.setString('loggedInPhone', userId);
+          await prefs.setString('loggedInDob', password);
+          
+          print('New session saved for report check: $userId');
+          
           if (widget.onCheckReport != null) {
-            widget.onCheckReport!(userId, password);
+            if (mounted) {
+              widget.onCheckReport!(userId, password);
+            }
           } else {
             // If onCheckReport is not provided, just do login
-            widget.onLoginSuccess(userId, password);
+            if (mounted) {
+              widget.onLoginSuccess(userId, password);
+            }
           }
         } else {
           setState(() {
@@ -114,12 +171,82 @@ class _StudentLoginViewState extends State<StudentLoginView> {
         setState(() {
           _errorMessage = 'Connection error. Please try again.';
         });
-      }
-      
-      if (mounted) {
-        setState(() => _isCheckingReport = false);
+      } finally {
+        if (mounted) {
+          setState(() => _isCheckingReport = false);
+        }
       }
     }
+  }
+
+  // Handle back button with session cleanup
+  Future<void> _handleBack() async {
+    // Clear any partial session data
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('loggedInPhone');
+    await prefs.remove('loggedInDob');
+    
+    if (mounted) {
+      widget.onBack();
+    }
+  }
+
+  // Validate phone number
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'User ID is required';
+    }
+    // Check if it's a valid phone number (10 digits)
+    final RegExp phoneRegExp = RegExp(r'^\d{10}$');
+    if (!phoneRegExp.hasMatch(value)) {
+      return 'Please enter a valid 10-digit phone number';
+    }
+    return null;
+  }
+
+  // Validate date of birth
+  String? _validateDob(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    // Validate date format (YYYY-MM-DD)
+    final RegExp dateRegExp = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+    if (!dateRegExp.hasMatch(value)) {
+      return 'Use format: YYYY-MM-DD';
+    }
+    
+    // Validate if it's a real date
+    try {
+      final parts = value.split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      
+      if (month < 1 || month > 12) {
+        return 'Invalid month';
+      }
+      if (day < 1 || day > 31) {
+        return 'Invalid day';
+      }
+      
+      // Check if date is not in future
+      final inputDate = DateTime(year, month, day);
+      final now = DateTime.now();
+      if (inputDate.isAfter(now)) {
+        return 'Date cannot be in future';
+      }
+      
+      // Check if student is at least 3 years old
+      final minAge = DateTime(now.year - 3, now.month, now.day);
+      if (inputDate.isAfter(minAge)) {
+        return 'Student must be at least 3 years old';
+      }
+      
+    } catch (e) {
+      return 'Invalid date';
+    }
+    
+    return null;
   }
 
   @override
@@ -151,7 +278,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                 children: [
                   // Back Button
                   TextButton(
-                    onPressed: widget.onBack,
+                    onPressed: _handleBack,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                     ),
@@ -197,9 +324,9 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   
                   const SizedBox(height: 40),
                   
-                  // User ID Field
+                  // User ID Field (Phone Number)
                   const Text(
-                    'USER ID',
+                    'USER ID (PHONE NUMBER)',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -211,19 +338,12 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   TextFormField(
                     controller: _userIdController,
                     keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'User ID is required';
-                      }
-                      if (value.length < 10) {
-                        return 'Please enter a valid phone number';
-                      }
-                      return null;
-                    },
+                    validator: _validatePhone,
                     onChanged: (_) => setState(() => _errorMessage = null),
                     decoration: InputDecoration(
-                      hintText: 'Enter your phone number',
+                      hintText: 'Enter your 10-digit phone number',
                       hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      prefixIcon: const Icon(Icons.phone, color: Color(0xFF94A3B8)),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
                       border: OutlineInputBorder(
@@ -251,9 +371,9 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   
                   const SizedBox(height: 24),
                   
-                  // Password Field
+                  // Password Field (DOB)
                   const Text(
-                    'PASSWORD (DOB)',
+                    'PASSWORD (DATE OF BIRTH)',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
@@ -265,25 +385,12 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password is required';
-                      }
-                      // Validate date format (YYYY-MM-DD)
-                      final RegExp dateRegExp = RegExp(
-                        r'^\d{4}-\d{2}-\d{2}$',
-                      );
-                      if (!dateRegExp.hasMatch(value)) {
-                        return 'Use format: YYYY-MM-DD';
-                      }
-                      return null;
-                    },
+                    validator: _validateDob,
                     onChanged: (_) => setState(() => _errorMessage = null),
                     decoration: InputDecoration(
                       hintText: 'YYYY-MM-DD',
                       hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
+                      prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF94A3B8)),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -291,6 +398,8 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -370,10 +479,10 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                         : const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.login, size: 20),
+                              Icon(Icons.dashboard, size: 20),
                               SizedBox(width: 12),
                               Text(
-                                'Open Dashboard',
+                                'OPEN DASHBOARD',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 14,
@@ -388,7 +497,14 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   
                   // Register Button
                   OutlinedButton(
-                    onPressed: (_isLoading || _isCheckingReport) ? null : widget.onRegister,
+                    onPressed: (_isLoading || _isCheckingReport) ? null : () {
+                      // Clear any partial session before registering
+                      _clearExistingSession().then((_) {
+                        if (mounted) {
+                          widget.onRegister();
+                        }
+                      });
+                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF4F46E5),
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -399,7 +515,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                       minimumSize: const Size(double.infinity, 0),
                     ),
                     child: const Text(
-                      'New Student? Register Here',
+                      'NEW STUDENT? REGISTER HERE',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -431,7 +547,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                               Icon(Icons.receipt_long, size: 18, color: Color(0xFF4F46E5)),
                               SizedBox(width: 8),
                               Text(
-                                'Check My Report',
+                                'CHECK MY REPORT',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -441,6 +557,23 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                             ],
                           ),
                   ),
+                  
+                  // Session Status (for debugging - remove in production)
+                  // const SizedBox(height: 8),
+                  // FutureBuilder(
+                  //   future: SharedPreferences.getInstance(),
+                  //   builder: (context, snapshot) {
+                  //     if (snapshot.hasData) {
+                  //       final prefs = snapshot.data as SharedPreferences;
+                  //       final phone = prefs.getString('loggedInPhone');
+                  //       return Text(
+                  //         'Current session: ${phone ?? 'None'}',
+                  //         style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  //       );
+                  //     }
+                  //     return const SizedBox();
+                  //   },
+                  // ),
                 ],
               ),
             ),

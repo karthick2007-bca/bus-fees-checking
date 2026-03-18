@@ -5,6 +5,7 @@ import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
 import 'student_report.dart';
 import 'edit_report_page.dart';
+import 'student_login_view.dart';
 
 class StudentRegisterView extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -29,6 +30,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   String? _frameError;
   bool _isLoadingRoutes = false;
   bool _isLoading = false;
+  bool _isSessionValid = true;
 
   // Text Controllers
   final nameCtrl = TextEditingController();
@@ -36,29 +38,35 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   final classCtrl = TextEditingController();
   final parentCtrl = TextEditingController();
   final addressCtrl = TextEditingController();
-  
   final phoneCtrl = TextEditingController();
   final dobCtrl = TextEditingController();
   final amountCtrl = TextEditingController();
 
   List<location_model.Route> routes = [];
   location_model.Route? selectedRoute;
+  
+  // Store current logged in user
+  String? _currentLoggedInPhone;
+  String? _currentLoggedInDob;
+  Map<String, dynamic>? _currentStudentData;
 
   @override
   void initState() {
     super.initState();
     
-    // ✅ Clear all form fields when opening a new registration form
+    // Clear all form fields when opening a new registration form
     _clearFormFields();
     
     amountCtrl.clear();
-    loadRoutes();
     
     _paymentService.initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentFailure,
       onWallet: () => print('Wallet selected'),
     );
+    
+    // Load routes and validate session
+    _initializeView();
   }
 
   @override
@@ -69,14 +77,46 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     classCtrl.dispose();
     parentCtrl.dispose();
     addressCtrl.dispose();
-   
     phoneCtrl.dispose();
     dobCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
   }
 
-  // ✅ NEW METHOD: Clear all form fields
+  // Initialize view with session validation
+  Future<void> _initializeView() async {
+    await _validateSession();
+    if (_isSessionValid) {
+      await loadRoutes();
+      await _loadLoggedInStudent();
+    }
+  }
+
+  // Validate current session
+  Future<void> _validateSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentLoggedInPhone = prefs.getString('loggedInPhone');
+      _currentLoggedInDob = prefs.getString('loggedInDob');
+
+      print('Validating session - Phone: $_currentLoggedInPhone, DOB: $_currentLoggedInDob');
+
+      if (_currentLoggedInPhone == null || _currentLoggedInDob == null) {
+        print('No valid session found');
+        setState(() {
+          _isSessionValid = false;
+        });
+        _showSessionExpiredDialog();
+      }
+    } catch (e) {
+      print('Error validating session: $e');
+      setState(() {
+        _isSessionValid = false;
+      });
+    }
+  }
+
+  // Clear all form fields
   void _clearFormFields() {
     nameCtrl.clear();
     rollCtrl.clear();
@@ -88,34 +128,32 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     amountCtrl.clear();
     setState(() {
       selectedRoute = null;
+      _currentStudentData = null;
     });
   }
 
-  // ✅ LOAD ONLY LOGGED-IN STUDENT
+  // Load ONLY logged-in student data
   Future<void> _loadLoggedInStudent() async {
+    if (!_isSessionValid) return;
+    
     setState(() => _isLoading = true);
     
     try {
-      // Get logged-in user credentials from SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final String? loggedInPhone = prefs.getString('loggedInPhone');
-      final String? loggedInDob = prefs.getString('loggedInDob');
+      print('Loading logged-in student: $_currentLoggedInPhone');
 
-      print('Loading logged-in student: $loggedInPhone');
-
-      if (loggedInPhone == null || loggedInDob == null) {
-        print('No logged-in user found');
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Fetch all students
+      // Fetch all students (ApiService.getStudents() already has cache busting)
       final students = await ApiService.getStudents();
       
       // Find the specific logged-in student
       final loggedInStudent = students.firstWhere(
-        (s) => s['phone']?.toString() == loggedInPhone && 
-               s['dob']?.toString().split('T')[0] == loggedInDob,
+        (s) {
+          final studentPhone = s['phone']?.toString();
+          final studentDob = s['dob']?.toString().split('T')[0];
+          
+          // Strict matching with current session
+          return studentPhone == _currentLoggedInPhone && 
+                 studentDob == _currentLoggedInDob;
+        },
         orElse: () => null,
       );
 
@@ -123,6 +161,8 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         print('Found logged-in student: ${loggedInStudent['name']}');
         
         setState(() {
+          _currentStudentData = Map<String, dynamic>.from(loggedInStudent);
+          
           // Set all fields with student data
           phoneCtrl.text = loggedInStudent['phone']?.toString() ?? '';
           dobCtrl.text = loggedInStudent['dob']?.toString().split('T')[0] ?? '';
@@ -133,7 +173,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           addressCtrl.text = loggedInStudent['address']?.toString() ?? '';
           
           // Find and select the route based on student's location
-          if (loggedInStudent['location'] != null) {
+          if (loggedInStudent['location'] != null && routes.isNotEmpty) {
             final matches = routes.where((r) => r.name == loggedInStudent['location']).toList();
             if (matches.isNotEmpty) {
               selectedRoute = matches.first;
@@ -146,21 +186,24 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         });
       } else {
         print('Logged-in student not found in database');
+        _showUserNotFoundDialog();
       }
     } catch (e) {
       print('Error loading logged-in student: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading student data: $e'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading student data: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // ✅ LOAD ROUTES/LOCATIONS
+  // Load routes/locations
   Future<void> loadRoutes() async {
     setState(() {
       _isLoadingRoutes = true;
@@ -182,26 +225,33 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       
       print('Routes count: ${routes.length}');
       
-      // After loading routes, try to select the student's route again
-      if (phoneCtrl.text.isNotEmpty && selectedRoute == null) {
-        final prefs = await SharedPreferences.getInstance();
-        final loggedInPhone = prefs.getString('loggedInPhone');
-        if (loggedInPhone == phoneCtrl.text) {
-          _loadLoggedInStudent();
-        }
-      }
     } catch (e) {
       print("Error loading routes: $e");
       setState(() {
         _frameError = e.toString();
         _isLoadingRoutes = false;
       });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading locations: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // ✅ HANDLE PAYMENT SUCCESS
+  // Handle payment success
   void _handlePaymentSuccess(dynamic response) async {
     try {
+      // Double-check session before saving
+      if (!await _verifySession()) {
+        _showSessionExpiredDialog();
+        return;
+      }
+      
       await _saveStudent();
       
       await ApiService.saveTransaction({
@@ -211,6 +261,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         'studentName': nameCtrl.text,
         'amount': selectedRoute?.fee ?? 0,
         'status': 'success',
+        'timestamp': DateTime.now().toIso8601String(),
       });
 
       if (!mounted) return;
@@ -222,28 +273,34 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         ),
       );
 
-      // ✅ Navigate to report and clear all previous routes
+      // Navigate to report with current user data only
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => StudentReport(
-            phone: phoneCtrl.text,
-            dob: dobCtrl.text,
+            phone: _currentLoggedInPhone!,
+            dob: _currentLoggedInDob!,
             onLogout: () {
-              // Clear stored credentials on logout
-              _clearLoggedInUser();
-              widget.onBack();
+              _logout();
             },
           ),
         ),
-        (route) => false, // This removes all previous routes
+        (route) => false,
       );
     } catch (e) {
       print('Error in payment success handler: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error processing payment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // ✅ HANDLE PAYMENT FAILURE
+  // Handle payment failure
   void _handlePaymentFailure(dynamic response) {
     if (!mounted) return;
     
@@ -255,20 +312,25 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     );
   }
 
-  // ✅ SAVE/UPDATE STUDENT
+  // Save/Update student
   Future<void> _saveStudent() async {
     try {
-      // Get all students
+      // Verify session again
+      if (!await _verifySession()) {
+        throw Exception('Session invalid');
+      }
+      
+      // Get all students to check if exists
       final students = await ApiService.getStudents();
       
-      // Find existing student by phone and dob
+      // Find existing student by phone and dob (using session data)
       final existingStudent = students.firstWhere(
-        (s) => s['phone']?.toString() == phoneCtrl.text && 
-               s['dob']?.toString().split('T')[0] == dobCtrl.text,
+        (s) => s['phone']?.toString() == _currentLoggedInPhone && 
+               s['dob']?.toString().split('T')[0] == _currentLoggedInDob,
         orElse: () => null,
       );
 
-      // Prepare student data
+      // Prepare student data with session info
       final studentData = {
         'id': existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
         'name': nameCtrl.text,
@@ -280,20 +342,21 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         'amountPaid': selectedRoute?.fee ?? 0,
         'status': 'succeed',
         'address': addressCtrl.text,
+        'phone': _currentLoggedInPhone,
+        'dob': _currentLoggedInDob,
         'registrationDate': existingStudent?['registrationDate'] ?? DateTime.now().toIso8601String(),
         'lastUpdated': DateTime.now().toIso8601String(),
         'payments': existingStudent?['payments'] ?? [],
         'locationHistory': existingStudent?['locationHistory'] ?? [],
       };
 
-      // Save to API
+      // Save to API (ApiService.addStudent handles both POST and PUT)
       await ApiService.addStudent(studentData);
 
       if (!mounted) return;
 
       // Clear form after successful save
       _clearFormFields();
-      _formKey.currentState?.reset();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -318,20 +381,146 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     }
   }
 
-  // ✅ CLEAR LOGGED-IN USER
+  // Verify current session
+  Future<bool> _verifySession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentPhone = prefs.getString('loggedInPhone');
+      final currentDob = prefs.getString('loggedInDob');
+      
+      final isValid = currentPhone == _currentLoggedInPhone && 
+             currentDob == _currentLoggedInDob &&
+             currentPhone != null;
+      
+      print('Session verification: $isValid');
+      return isValid;
+    } catch (e) {
+      print('Error verifying session: $e');
+      return false;
+    }
+  }
+
+  // Clear logged-in user
   Future<void> _clearLoggedInUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('loggedInPhone');
       await prefs.remove('loggedInDob');
+      
+      setState(() {
+        _currentLoggedInPhone = null;
+        _currentLoggedInDob = null;
+        _isSessionValid = false;
+        _currentStudentData = null;
+      });
+      
       print('Logged-in user cleared');
     } catch (e) {
       print('Error clearing logged-in user: $e');
     }
   }
 
-  // ✅ SUBMIT PAYMENT
+  // Navigate to login page
+  void _navigateToLogin() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentLoginView(
+          onBack: () {
+            // Handle back navigation - go back to previous screen
+            Navigator.pop(context);
+          },
+          onLoginSuccess: (phone, dob) {
+            // After successful login, navigate back to this view
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StudentRegisterView(
+                  onSuccess: widget.onSuccess,
+                  onBack: widget.onBack,
+                  onRegisterSuccess: widget.onRegisterSuccess,
+                ),
+              ),
+            );
+          },
+          onRegister: () {
+            // If register is pressed, they're already here
+            // So just stay on this page
+            print('Already on register page');
+          },
+        ),
+      ),
+      (route) => false, // This removes all previous routes
+    );
+  }
+
+  // Logout user
+  Future<void> _logout() async {
+    await _clearLoggedInUser();
+    
+    if (mounted) {
+      _navigateToLogin();
+    }
+  }
+
+  // Show session expired dialog
+  void _showSessionExpiredDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Session Expired'),
+          content: const Text('Your session has expired. Please login again.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Show user not found dialog
+  void _showUserNotFoundDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('User Not Found'),
+          content: const Text('Your account could not be found. Please contact support or login again.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout();
+              },
+              child: const Text('Login Again'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Submit payment
   Future<void> submit() async {
+    // Verify session before proceeding
+    if (!await _verifySession()) {
+      _showSessionExpiredDialog();
+      return;
+    }
+    
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedRoute == null) {
@@ -344,6 +533,27 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       return;
     }
 
+    // Verify that form data matches session
+    if (phoneCtrl.text != _currentLoggedInPhone || 
+        dobCtrl.text != _currentLoggedInDob) {
+      
+      print('Data mismatch! Form phone: ${phoneCtrl.text}, Session phone: $_currentLoggedInPhone');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Session verification failed. Please login again.'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) _logout();
+      });
+      
+      return;
+    }
+
     // Open payment checkout
     _paymentService.openCheckout(
       amount: selectedRoute!.fee,
@@ -353,7 +563,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     );
   }
 
-  // ✅ BUILD FORM FIELD
+  // Build form field
   Widget _field(TextEditingController ctrl, String label, {bool readOnly = false}) {
     IconData icon;
     switch (label) {
@@ -372,8 +582,14 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       case 'Address':
         icon = Icons.home;
         break;
-      default:
+      case 'Phone':
+        icon = Icons.phone;
+        break;
+      case 'Date of Birth':
         icon = Icons.calendar_today;
+        break;
+      default:
+        icon = Icons.edit;
     }
 
     return Padding(
@@ -404,6 +620,35 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading or session invalid state
+    if (!_isSessionValid) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Student Registration'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Session Expired',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('Please login again to continue'),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _logout,
+                child: const Text('Go to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Registration'),
@@ -415,6 +660,13 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
             });
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -427,12 +679,38 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Display current user info
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info, color: Colors.blue),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Logged in as: $_currentLoggedInPhone',
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
                         _field(nameCtrl, 'Student Name'),
                         _field(rollCtrl, 'Roll No'),
                         _field(classCtrl, 'Std / Section'),
                         _field(parentCtrl, 'Parent Name'),
                         _field(addressCtrl, 'Address'),
                         
+                        // Hidden fields for phone and dob (display them read-only)
+                        _field(phoneCtrl, 'Phone', readOnly: true),
+                        _field(dobCtrl, 'Date of Birth', readOnly: true),
 
                         const SizedBox(height: 16),
 
@@ -506,7 +784,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(right: BorderSide(color: Colors.grey.shade300, width: 2)),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,21 +810,27 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     ListTile(
                       leading: const Icon(Icons.edit_location),
                       title: const Text('Change Location'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditReportPage(
-                              phone: phoneCtrl.text,
-                              dob: dobCtrl.text,
-                              currentLocation: selectedRoute?.name ?? '',
+                      onTap: () async {
+                        // Verify session before navigating
+                        if (await _verifySession()) {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditReportPage(
+                                phone: _currentLoggedInPhone!,
+                                dob: _currentLoggedInDob!,
+                                currentLocation: selectedRoute?.name ?? '',
+                              ),
                             ),
-                          ),
-                        ).then((_) {
+                          );
+                          
                           // Refresh after returning from edit page
-                          _loadLoggedInStudent();
-                          loadRoutes();
-                        });
+                          if (mounted) {
+                            _initializeView();
+                          }
+                        } else {
+                          _showSessionExpiredDialog();
+                        }
                       },
                     ),
                   ],
