@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "build": "chmod +x build.sh && ./build.sh"
+  },
+  "dependencies": {
+    "cors": "^2.8.6"
   }
 }
