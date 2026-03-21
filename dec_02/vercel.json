@@ -1,18 +1,21 @@
 {
   "builds": [
     {
-      "src": "build/web/**",
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build/web",
-        "buildCommand": "flutter build web --release --no-tree-shake-icons"
+        "distDir": "build/web"
       }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/build/web/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/build/web/index.html"
     }
   ]
 }
