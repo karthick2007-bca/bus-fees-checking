@@ -4,9 +4,12 @@
     {
       "src": "backend/server.js",
       "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60
-      }
+      "config": { "maxDuration": 60 }
+    },
+    {
+      "src": "dec_02/package.json", 
+      "use": "@vercel/static-build",
+      "config": { "distDir": "build/web" }
     }
   ],
   "routes": [
@@ -19,7 +22,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "dec_02/index.html"
     }
   ]
 }
