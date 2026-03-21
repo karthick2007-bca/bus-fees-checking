@@ -7,7 +7,7 @@
       "config": { "maxDuration": 60 }
     },
     {
-      "src": "dec_02/package.json",
+      "src": "TransitPay/package.json",
       "use": "@vercel/static-build",
       "config": { 
         "distDir": "build/web"
@@ -24,7 +24,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "dec_02/index.html"
+      "dest": "TransitPay/index.html"
     }
   ]
 }
