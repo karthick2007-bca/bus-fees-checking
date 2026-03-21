@@ -1,11 +1,8 @@
 {
   "version": 2,
-  "env": {
-    "MONGODB_URI": "mongodb+srv://karthi2142007:karthi2024@cluster0.nfyak0h.mongodb.net/karthick?retryWrites=true&w=majority"
-  },
   "builds": [
     {
-      "src": "server.js",
+      "src": "backend/server.js",
       "use": "@vercel/node",
       "config": {
         "maxDuration": 60
@@ -15,11 +12,14 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server.js"
+      "dest": "backend/server.js"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/server.js"
+      "dest": "/index.html"
     }
   ]
 }

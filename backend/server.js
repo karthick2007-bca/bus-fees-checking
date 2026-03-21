@@ -642,10 +642,16 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ... mela ulla code ellam apdiye irukkatum ...
+
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`📍 Debug students: http://localhost:${PORT}/api/debug/students`);
-});
+// Indha listen function-ah Vercel-la skip pannidunga
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+// IDHU THAAN ROMBA MUKKIYAM (Vercel Backend-ku)
+module.exports = app;
