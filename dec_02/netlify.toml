@@ -1,6 +1,14 @@
 [build]
   publish = "build/web"
-  command = "flutter build web --no-tree-shake-icons"
+  command = """
+  # Install Flutter
+  git clone https://github.com/flutter/flutter.git --depth 1 -b stable /opt/flutter
+  export PATH="$PATH:/opt/flutter/bin"
+  flutter precache
+  
+  # Build your app
+  flutter build web --release --no-tree-shake-icons
+  """
 
 [[redirects]]
   from = "/*"
