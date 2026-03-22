@@ -1,16 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "backend/server.js",
-      "use": "@vercel/node",
-      "config": { "maxDuration": 60 }
+      "use": "@vercel/node"
     },
     {
-      "src": "TransitPay/package.json",
+      "src": "dec_02/**",
       "use": "@vercel/static-build",
-      "config": { 
-        "distDir": "build/web"
+      "config": {
+        "distDir": "dec_02/build/web"
       }
     }
   ],
@@ -20,11 +18,8 @@
       "dest": "backend/server.js"
     },
     {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
-      "dest": "TransitPay/index.html"
+      "dest": "/dec_02/build/web/$1"
     }
   ]
 }

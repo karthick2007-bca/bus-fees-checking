@@ -1,0 +1,37 @@
+{
+  "name": "bus-fees-checking",
+  "version": "1.0.0",
+  "description": "Bus fees checking application",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "build": "cd dec_02 && npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karthick2007-bca/bus-fees-checking.git"
+  },
+  "keywords": [
+    "bus",
+    "fees",
+    "school"
+  ],
+  "author": "Karthick",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/karthick2007-bca/bus-fees-checking/issues"
+  },
+  "homepage": "https://github.com/karthick2007-bca/bus-fees-checking#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "mongoose": "^7.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
