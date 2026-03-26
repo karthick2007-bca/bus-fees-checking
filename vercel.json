@@ -1,15 +1,13 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "backend/server.js",
       "use": "@vercel/node"
     },
     {
-      "src": "dec_02/**",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dec_02/build/web"
-      }
+      "src": "dec_02/build/web/**/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
