@@ -649,7 +649,7 @@ app.use((err, req, res, next) => {
 // ... mela ulla code ellam apdiye irukkatum ...
 
 const PORT = process.env.PORT || 3000;
-
+module.exports = app;
 // Indha listen function-ah Vercel-la skip pannidunga
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
@@ -658,4 +658,3 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // IDHU THAAN ROMBA MUKKIYAM (Vercel Backend-ku)
-module.exports = app;
