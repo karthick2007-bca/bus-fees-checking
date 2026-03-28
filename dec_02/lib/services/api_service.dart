@@ -6,13 +6,13 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // ✅ Windows/Web-ku 'localhost' um, Android-ku '10.0.2.2' um auto-va switch aagum.
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000';
+    if (kIsWeb) return 'https://bus-fees-checking-backend.vercel.app';
     try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+      if (Platform.isAndroid) return 'https://bus-fees-checking-backend.vercel.app';
     } catch (e) {
       // Platform check Windows-la fail aanaal default-ah localhost edukkum
     }
-    return 'http://localhost:3000';
+    return 'htpps://bus-fees-checking-backend.vercel.app';
   }
 
   static const Duration timeout = Duration(seconds: 30);
