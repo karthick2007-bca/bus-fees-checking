@@ -35,10 +35,69 @@ class _StudentReportState extends State<StudentReport> {
     super.dispose();
   }
 
-  void _handlePaymentSuccess(dynamic response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment Success: ${response['paymentId']}'), backgroundColor: Colors.green),
-    );
+  void _handlePaymentSuccess(dynamic response) async {
+    final paymentId = response['paymentId'];
+    final amountPaid = (studentData!['totalDue'] ?? 0).toDouble();
+
+    // Update student status and amount
+    final updatedData = {
+      'amountPaid': amountPaid,
+      'totalDue': 0,
+      'status': 'succeed',
+      'lastPaymentId': paymentId,
+      'lastPaymentDate': DateTime.now().toIso8601String(),
+    };
+
+    await ApiService.updateStudent(studentData!['phone'], updatedData);
+
+    // Save transaction
+    await ApiService.saveTransaction({
+      'studentId': studentData!['_id']?.toString() ?? studentData!['id'] ?? '',
+      'studentName': studentData!['name'],
+      'phone': studentData!['phone'],
+      'rollNo': studentData!['rollNo'],
+      'amount': amountPaid,
+      'paymentId': paymentId,
+      'orderId': response['orderId'] ?? '',
+      'signature': response['signature'] ?? '',
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+
+    // Auto-generate report after payment
+    await ApiService.saveReport({
+      'studentId': studentData!['_id']?.toString() ?? studentData!['id'] ?? '',
+      'phone': studentData!['phone'],
+      'name': studentData!['name'],
+      'rollNo': studentData!['rollNo'],
+      'studentClass': studentData!['studentClass'],
+      'parentName': studentData!['parentName'],
+      'address': studentData!['address'],
+      'location': studentData!['location'],
+      'totalDue': 0,
+      'amountPaid': amountPaid,
+      'status': 'succeed',
+      'paymentId': paymentId,
+      'paymentDate': DateTime.now().toIso8601String(),
+      'dob': studentData!['dob']?.toString().split('T')[0],
+      'generatedAt': DateTime.now().toIso8601String(),
+    });
+
+    // Refresh student data
+    setState(() {
+      studentData!['amountPaid'] = amountPaid;
+      studentData!['totalDue'] = 0;
+      studentData!['status'] = 'succeed';
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment Successful! Report generated. ID: $paymentId'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _handlePaymentFailure(dynamic response) {
@@ -70,24 +129,6 @@ class _StudentReportState extends State<StudentReport> {
         studentData = student.isNotEmpty ? student : null;
         isLoading = false;
       });
-
-      // Save report to database
-      if (studentData != null) {
-        await ApiService.saveReport({
-          'studentId': studentData!['id'],
-          'phone': studentData!['phone'],
-          'name': studentData!['name'],
-          'rollNo': studentData!['rollNo'],
-          'studentClass': studentData!['studentClass'],
-          'parentName': studentData!['parentName'],
-          'address': studentData!['address'],
-          'location': studentData!['location'],
-          'totalDue': studentData!['totalDue'],
-          'amountPaid': studentData!['amountPaid'],
-          'status': studentData!['status'],
-          'dob': studentData!['dob']?.toString().split('T')[0],
-        });
-      }
     } catch (e) {
       setState(() => isLoading = false);
       print('Error loading student: $e');
