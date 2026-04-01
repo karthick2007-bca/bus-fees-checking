@@ -7,12 +7,14 @@ app.use(cors());
 app.use(express.json());
 
 const uri = process.env.MONGODB_URI;
+let cachedClient = null;
 let cachedDb = null;
 
 async function connectToDatabase() {
   if (cachedDb) return cachedDb;
-  const client = await MongoClient.connect(uri);
-  cachedDb = client.db('bus_fees');
+  if (!uri) throw new Error('MONGODB_URI environment variable is not set');
+  cachedClient = await MongoClient.connect(uri, { serverSelectionTimeoutMS: 5000 });
+  cachedDb = cachedClient.db('bus_fees');
   return cachedDb;
 }
 
