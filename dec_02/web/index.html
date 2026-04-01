@@ -38,6 +38,9 @@
     function openRazorpay(options) {
       var rzp = new Razorpay(options);
       rzp.open();
+      rzp.on('payment.failed', function(response) {
+        console.error('Payment failed:', response.error);
+      });
     }
   </script>
 </head>
