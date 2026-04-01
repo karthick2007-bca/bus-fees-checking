@@ -3,6 +3,8 @@ library payment_service_web;
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:js' show allowInterop;
 
 class PaymentServiceImpl {
   Function(Map<String, dynamic>)? _onSuccess;
@@ -24,7 +26,7 @@ class PaymentServiceImpl {
     required String email,
   }) {
     // Store callbacks in JS context so they can be called from JS
-    js.context['_flutterPaymentSuccess'] = js.allowInterop((paymentId, orderId, signature) {
+    js.context['_flutterPaymentSuccess'] = allowInterop((paymentId, orderId, signature) {
       _onSuccess?.call({
         'paymentId': paymentId?.toString() ?? '',
         'orderId': orderId?.toString() ?? '',
@@ -32,7 +34,7 @@ class PaymentServiceImpl {
       });
     });
 
-    js.context['_flutterPaymentDismiss'] = js.allowInterop(() {
+    js.context['_flutterPaymentDismiss'] = allowInterop(() {
       _onFailure?.call({'message': 'Payment cancelled by user'});
     });
 
