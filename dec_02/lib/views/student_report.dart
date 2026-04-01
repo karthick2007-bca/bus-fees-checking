@@ -6,8 +6,9 @@ class StudentReport extends StatefulWidget {
   final String phone;
   final String dob;
   final VoidCallback? onLogout;
+  final Map<String, dynamic>? initialData;
 
-  const StudentReport({super.key, required this.phone, required this.dob, this.onLogout});
+  const StudentReport({super.key, required this.phone, required this.dob, this.onLogout, this.initialData});
 
   @override
   State<StudentReport> createState() => _StudentReportState();
@@ -118,15 +119,23 @@ class _StudentReportState extends State<StudentReport> {
   }
 
   Future<void> _loadStudentData() async {
+    // Use passed data directly if available
+    if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+      setState(() {
+        studentData = widget.initialData;
+        isLoading = false;
+      });
+      return;
+    }
     try {
       final students = await ApiService.getStudents();
       final student = students.firstWhere(
-        (s) => s['phone'] == widget.phone && s['dob']?.toString().split('T')[0] == widget.dob,
+        (s) => s['phone']?.toString() == widget.phone &&
+            s['dob']?.toString().split('T')[0] == widget.dob,
         orElse: () => {},
       );
-
       setState(() {
-        studentData = student.isNotEmpty ? student : null;
+        studentData = student.isNotEmpty ? Map<String, dynamic>.from(student) : null;
         isLoading = false;
       });
     } catch (e) {
