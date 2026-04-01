@@ -221,6 +221,11 @@ class _StudentReportState extends State<StudentReport> {
                         if (studentData!['registrationDate'] != null)
                           _buildInfoRow('Registration Date', 
                             DateTime.parse(studentData!['registrationDate']).toString().split('.')[0]),
+                        if (studentData!['paymentId'] != null)
+                          _buildInfoRow('Payment ID', studentData!['paymentId'].toString()),
+                        if (studentData!['paymentDate'] != null)
+                          _buildInfoRow('Payment Date',
+                            DateTime.parse(studentData!['paymentDate']).toString().split('.')[0]),
                         
                         if ((studentData!['totalDue'] ?? 0) > 0) ...[
                           const SizedBox(height: 24),

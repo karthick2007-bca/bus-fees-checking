@@ -246,43 +246,65 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   // Handle payment success
   void _handlePaymentSuccess(dynamic response) async {
     try {
-      // Double-check session before saving
       if (!await _verifySession()) {
         _showSessionExpiredDialog();
         return;
       }
-      
+
       await _saveStudent();
-      
+
+      final paymentId = response['paymentId']?.toString() ?? '';
+      final amount = selectedRoute?.fee ?? 0;
+      final now = DateTime.now().toIso8601String();
+
+      // Save transaction
       await ApiService.saveTransaction({
-        'paymentId': response['paymentId']?.toString() ?? '',
+        'paymentId': paymentId,
         'orderId': response['orderId']?.toString() ?? '',
-        'studentId': phoneCtrl.text,
+        'studentId': _currentLoggedInPhone,
         'studentName': nameCtrl.text,
-        'amount': selectedRoute?.fee ?? 0,
+        'phone': _currentLoggedInPhone,
+        'rollNo': rollCtrl.text,
+        'amount': amount,
         'status': 'success',
-        'timestamp': DateTime.now().toIso8601String(),
+        'timestamp': now,
+      });
+
+      // Auto-generate report based on student details after payment
+      await ApiService.saveReport({
+        'phone': _currentLoggedInPhone,
+        'name': nameCtrl.text,
+        'rollNo': rollCtrl.text,
+        'studentClass': classCtrl.text,
+        'parentName': parentCtrl.text,
+        'address': addressCtrl.text,
+        'location': selectedRoute?.name ?? '',
+        'dob': _currentLoggedInDob,
+        'totalDue': 0,
+        'amountPaid': amount,
+        'status': 'succeed',
+        'paymentId': paymentId,
+        'paymentDate': now,
+        'generatedAt': now,
       });
 
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment Successful!'),
+        const SnackBar(
+          content: Text('Payment Successful! Report generated ✅'),
           backgroundColor: Colors.green,
         ),
       );
 
-      // Navigate to report with current user data only
+      // Navigate to report page
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => StudentReport(
             phone: _currentLoggedInPhone!,
             dob: _currentLoggedInDob!,
-            onLogout: () {
-              _logout();
-            },
+            onLogout: () => _logout(),
           ),
         ),
         (route) => false,

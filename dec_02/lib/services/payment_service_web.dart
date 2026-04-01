@@ -1,5 +1,7 @@
+// ignore: avoid_web_libraries_in_flutter
 library payment_service_web;
 
+// ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
 
 class PaymentServiceImpl {
@@ -21,15 +23,16 @@ class PaymentServiceImpl {
     required String phone,
     required String email,
   }) {
-    final handler = js.allowInterop((response) {
+    // Store callbacks in JS context so they can be called from JS
+    js.context['_flutterPaymentSuccess'] = js.allowInterop((paymentId, orderId, signature) {
       _onSuccess?.call({
-        'paymentId': response['razorpay_payment_id'],
-        'orderId': response['razorpay_order_id'] ?? '',
-        'signature': response['razorpay_signature'] ?? '',
+        'paymentId': paymentId?.toString() ?? '',
+        'orderId': orderId?.toString() ?? '',
+        'signature': signature?.toString() ?? '',
       });
     });
 
-    final ondismiss = js.allowInterop(() {
+    js.context['_flutterPaymentDismiss'] = js.allowInterop(() {
       _onFailure?.call({'message': 'Payment cancelled by user'});
     });
 
@@ -39,17 +42,10 @@ class PaymentServiceImpl {
       'name': 'Fee Payment',
       'description': 'Student Fee Payment',
       'prefill': {'contact': phone, 'email': email},
-      'handler': handler,
-      'modal': {
-        'ondismiss': ondismiss,
-        'backdropclose': false,
-        'escape': false,
-        'handleback': true,
-      },
-      'theme': {'color': '#4F46E5'}
+      'theme': {'color': '#4F46E5'},
     });
 
-    js.context.callMethod('openRazorpay', [options]);
+    js.context.callMethod('openRazorpayCheckout', [options]);
   }
 
   void dispose() {}

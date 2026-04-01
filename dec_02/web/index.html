@@ -35,12 +35,28 @@
   <link rel="manifest" href="manifest.json">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
-    function openRazorpay(options) {
+    function openRazorpayCheckout(options) {
+      options.handler = function(response) {
+        if (window._flutterPaymentSuccess) {
+          window._flutterPaymentSuccess(
+            response.razorpay_payment_id,
+            response.razorpay_order_id || '',
+            response.razorpay_signature || ''
+          );
+        }
+      };
+      options.modal = {
+        ondismiss: function() {
+          if (window._flutterPaymentDismiss) {
+            window._flutterPaymentDismiss();
+          }
+        },
+        backdropclose: false,
+        escape: false,
+        handleback: true
+      };
       var rzp = new Razorpay(options);
       rzp.open();
-      rzp.on('payment.failed', function(response) {
-        console.error('Payment failed:', response.error);
-      });
     }
   </script>
 </head>
