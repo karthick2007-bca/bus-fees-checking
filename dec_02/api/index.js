@@ -14,7 +14,7 @@ async function connectToDatabase() {
   if (cachedDb) return cachedDb;
   if (!uri) throw new Error('MONGODB_URI environment variable is not set');
   cachedClient = await MongoClient.connect(uri, { serverSelectionTimeoutMS: 5000 });
-  cachedDb = cachedClient.db('bus_fees');
+  cachedDb = cachedClient.db('karthick');
   return cachedDb;
 }
 
