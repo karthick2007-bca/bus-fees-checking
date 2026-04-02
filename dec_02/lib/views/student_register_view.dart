@@ -262,7 +262,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       final capturedLocation = selectedRoute?.name ?? '';
       final capturedAmount = selectedRoute?.fee ?? 0;
 
-      await _saveStudent();
+      await _saveStudent(fromPayment: true);
 
       final paymentId = response['paymentId']?.toString() ?? '';
       final now = DateTime.now().toIso8601String();
@@ -360,24 +360,20 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   }
 
   // Save/Update student
-  Future<void> _saveStudent() async {
+  Future<void> _saveStudent({bool fromPayment = false}) async {
     try {
-      // Verify session again
       if (!await _verifySession()) {
         throw Exception('Session invalid');
       }
       
-      // Get all students to check if exists
       final students = await ApiService.getStudents();
       
-      // Find existing student by phone and dob (using session data)
       final existingStudent = students.firstWhere(
         (s) => s['phone']?.toString() == _currentLoggedInPhone && 
                s['dob']?.toString().split('T')[0] == _currentLoggedInDob,
         orElse: () => null,
       );
 
-      // Prepare student data with session info
       final studentData = {
         'id': existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
         'name': nameCtrl.text,
@@ -397,28 +393,23 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         'locationHistory': existingStudent?['locationHistory'] ?? [],
       };
 
-      // Save to API (ApiService.addStudent handles both POST and PUT)
       await ApiService.addStudent(studentData);
 
-      if (!mounted) return;
-
-      // Clear form after successful save
-      _clearFormFields();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Student Registered Successfully ✅'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      widget.onSuccess();
-      widget.onRegisterSuccess();
+      // Only clear form and call callbacks if NOT triggered from payment
+      if (!fromPayment && mounted) {
+        _clearFormFields();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Student Registered Successfully ✅'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        widget.onSuccess();
+        widget.onRegisterSuccess();
+      }
     } catch (e) {
       print("Error saving student: $e");
-      
       if (!mounted) return;
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving student: $e'),

@@ -43,13 +43,20 @@ class _StudentReportState extends State<StudentReport> {
   }
 
   Future<void> _loadStudentData() async {
+    // Always use initialData if provided - never overwrite with API call
     if (widget.initialData != null && widget.initialData!.isNotEmpty) {
+      final data = Map<String, dynamic>.from(widget.initialData!);
+      // Ensure no field is null - replace nulls with empty string
+      data.forEach((key, value) {
+        if (value == null) data[key] = '';
+      });
       setState(() {
-        studentData = widget.initialData;
+        studentData = data;
         isLoading = false;
       });
       return;
     }
+    // Only fetch from API if no initialData provided
     try {
       final students = await ApiService.getStudents();
       final student = students.firstWhere(
