@@ -56,46 +56,74 @@ class _AppControllerState extends State<AppController> {
   AppView _currentView = AppView.landing;
   String? _loggedInPhone;
   String? _loggedInDob;
+  Map<String, dynamic>? _reportInitialData;
 
   Future<void> _checkStudentRegistration(String phone, String dob) async {
     try {
       final students = await ApiService.getStudents();
-      print('All students: $students');
-      
       final student = students.firstWhere(
         (s) => s['phone'] == phone && s['dob']?.toString().split('T')[0] == dob,
         orElse: () => {},
       );
 
-      print('Found student: $student');
-      print('Student name: ${student['name']}');
-      print('Amount paid: ${student['amountPaid']}');
-      print('Total due: ${student['totalDue']}');
-
       setState(() {
         _loggedInPhone = phone;
         _loggedInDob = dob;
-        
-        // Check if student has registered (name filled) AND paid
-        bool hasRegistered = student.isNotEmpty && 
-                            student['name'] != null && 
-                            student['name'].toString().trim().isNotEmpty;
-        
-        bool hasPaid = student['amountPaid'] != null && 
-                      student['totalDue'] != null && 
-                      student['amountPaid'] >= student['totalDue'];
-        
+        _reportInitialData = null;
+
+        bool hasRegistered = student.isNotEmpty &&
+            student['name'] != null &&
+            student['name'].toString().trim().isNotEmpty;
+
+        bool hasPaid = student['amountPaid'] != null &&
+            student['totalDue'] != null &&
+            student['amountPaid'] >= student['totalDue'];
+
         if (hasRegistered && hasPaid) {
-          print('Showing REPORT - Registered and Paid');
           _currentView = AppView.studentReport;
         } else {
-          print('Showing REGISTRATION - Not registered or not paid');
           _currentView = AppView.studentRegister;
         }
       });
     } catch (e) {
-      print('Error: $e');
       setState(() => _currentView = AppView.studentRegister);
+    }
+  }
+
+  // Fetch latest report for student from reports collection
+  Future<void> _checkMyReport(String phone, String dob) async {
+    try {
+      final reports = await ApiService.getReports();
+
+      final studentReports = reports.where((r) {
+        final rPhone = r['phone']?.toString();
+        final rDob = r['dob']?.toString().split('T')[0];
+        return rPhone == phone && rDob == dob;
+      }).toList();
+
+      Map<String, dynamic>? reportData;
+      if (studentReports.isNotEmpty) {
+        studentReports.sort((a, b) {
+          final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          return bDate.compareTo(aDate);
+        });
+        reportData = Map<String, dynamic>.from(studentReports.first);
+      }
+
+      setState(() {
+        _loggedInPhone = phone;
+        _loggedInDob = dob;
+        _reportInitialData = reportData;
+        _currentView = AppView.studentReport;
+      });
+    } catch (e) {
+      setState(() {
+        _loggedInPhone = phone;
+        _loggedInDob = dob;
+        _reportInitialData = null;
+        _currentView = AppView.studentReport;
+      });
     }
   }
 
@@ -120,11 +148,7 @@ class _AppControllerState extends State<AppController> {
           },
           onRegister: () {},
           onCheckReport: (phone, dob) async {
-            setState(() {
-              _loggedInPhone = phone;
-              _loggedInDob = dob;
-              _currentView = AppView.studentReport;
-            });
+            await _checkMyReport(phone, dob);
           },
         );
       case AppView.studentRegister:
@@ -143,6 +167,7 @@ class _AppControllerState extends State<AppController> {
         return StudentReport(
           phone: _loggedInPhone ?? '',
           dob: _loggedInDob ?? '',
+          initialData: _reportInitialData,
           onLogout: () => setState(() => _currentView = AppView.landing),
         );
       default:
