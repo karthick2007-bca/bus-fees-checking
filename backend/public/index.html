@@ -14,7 +14,7 @@
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
-  <base href="/">
+  <base href="./">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -35,7 +35,26 @@
   <link rel="manifest" href="manifest.json">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
-    function openRazorpay(options) {
+    function openRazorpayCheckout(options) {
+      options.handler = function(response) {
+        if (window._flutterPaymentSuccess) {
+          window._flutterPaymentSuccess(
+            response.razorpay_payment_id,
+            response.razorpay_order_id || '',
+            response.razorpay_signature || ''
+          );
+        }
+      };
+      options.modal = {
+        ondismiss: function() {
+          if (window._flutterPaymentDismiss) {
+            window._flutterPaymentDismiss();
+          }
+        },
+        backdropclose: false,
+        escape: false,
+        handleback: true
+      };
       var rzp = new Razorpay(options);
       rzp.open();
     }
