@@ -57,6 +57,11 @@ class ApiService {
     await http.post(Uri.parse('$baseUrl/api/locations'), headers: _headers, body: jsonEncode(location)).timeout(timeout);
   }
 
+  static Future<void> updateLocation(String id, String name, double fee) async {
+    await http.put(Uri.parse('$baseUrl/api/locations/$id'),
+        headers: _headers, body: jsonEncode({'name': name, 'fee': fee})).timeout(timeout);
+  }
+
   static Future<void> deleteLocation(String id) async {
     await http.delete(Uri.parse('$baseUrl/api/locations/$id')).timeout(timeout);
   }

@@ -410,6 +410,21 @@ app.post('/api/locations', async (req, res) => {
   }
 });
 
+// Update location fee by id
+app.put('/api/locations/:id', async (req, res) => {
+  try {
+    const location = await Location.findOneAndUpdate(
+      { id: req.params.id },
+      { fee: req.body.fee, name: req.body.name },
+      { new: true }
+    );
+    if (!location) return res.status(404).json({ error: 'Location not found' });
+    res.json(location);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete location
 app.delete('/api/locations/:id', async (req, res) => {
   try {

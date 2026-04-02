@@ -24,7 +24,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int totalStudents = 0;
   int paidStudents = 0;
   final TextEditingController searchController = TextEditingController();
-  Set<String> selectedLocationIds = {};
+  String? _longPressedLocationId;
   bool _notificationShown = false;
 
   @override
@@ -157,34 +157,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
-          if (selectedLocationIds.isNotEmpty)
+          if (_longPressedLocationId != null)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: 'Delete location',
               onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Locations'),
-                    content: Text('Delete ${selectedLocationIds.length} location(s)?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  for (var id in selectedLocationIds) {
-                    final loc = locations.firstWhere((l) => l['id'] == id);
-                    await _deleteLocation(id, loc['name']);
-                  }
-                  setState(() => selectedLocationIds.clear());
-                }
+                final loc = locations.firstWhere((l) => l['id'] == _longPressedLocationId);
+                await _deleteLocation(loc['id'], loc['name']);
+                setState(() => _longPressedLocationId = null);
               },
             ),
           IconButton(
@@ -379,75 +359,63 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     itemCount: filteredLocations.length,
                     itemBuilder: (context, index) {
                       final location = filteredLocations[index];
-                      final isSelected = selectedLocationIds.contains(location['id']);
+                      final isLongPressed = _longPressedLocationId == location['id'];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
-                        color: isSelected ? const Color(0xFFEEF2FF) : null,
+                        color: isLongPressed ? const Color(0xFFEEF2FF) : null,
                         child: ListTile(
-                          onTap: selectedLocationIds.isEmpty
-                              ? () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => LocationStudentsPage(
-                                        locationName: location['name'],
-                                      ),
-                                    ),
-                                  );
-                                }
-                              : () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      selectedLocationIds.remove(location['id']);
-                                    } else {
-                                      selectedLocationIds.add(location['id']);
-                                    }
-                                  });
-                                },
+                          onTap: () {
+                            if (_longPressedLocationId != null) {
+                              setState(() => _longPressedLocationId = null);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LocationStudentsPage(
+                                  locationName: location['name'],
+                                ),
+                              ),
+                            );
+                          },
                           onLongPress: () {
                             setState(() {
-                              if (isSelected) {
-                                selectedLocationIds.remove(location['id']);
-                              } else {
-                                selectedLocationIds.add(location['id']);
-                              }
+                              _longPressedLocationId = isLongPressed ? null : location['id'];
                             });
                           },
-                          leading: isSelected
-                              ? const Icon(Icons.check_circle, color: Color(0xFF4F46E5))
+                          leading: isLongPressed
+                              ? Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4F46E5),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.check, color: Colors.white, size: 16),
+                                )
                               : const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
                           title: Text(
                             location['name'],
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text('Fee: ₹${location['fee']}'),
-                          trailing: selectedLocationIds.isEmpty
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, color: Color(0xFF4F46E5), size: 20),
-                                      onPressed: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => EditLocationPage(
-                                              locationId: location['id'],
-                                              locationName: location['name'],
-                                              currentFee: (location['fee'] as num).toDouble(),
-                                            ),
-                                          ),
-                                        );
-                                        if (result == true) _loadLocations();
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                      onPressed: () => _deleteLocation(location['id'], location['name']),
-                                    ),
-                                  ],
-                                )
-                              : null,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit, color: Color(0xFF4F46E5), size: 20),
+                            onPressed: () async {
+                              setState(() => _longPressedLocationId = null);
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditLocationPage(
+                                    locationId: location['id'],
+                                    locationName: location['name'],
+                                    currentFee: (location['fee'] as num).toDouble(),
+                                  ),
+                                ),
+                              );
+                              if (result == true) _loadLocations();
+                            },
+                          ),
                         ),
                       );
                     },
@@ -753,11 +721,11 @@ class _EditLocationPageState extends State<EditLocationPage> {
   Future<void> _updateFee() async {
     if (feeController.text.isEmpty) return;
     try {
-      await ApiService.addLocation({
-        'id': widget.locationId,
-        'name': widget.locationName,
-        'fee': double.parse(feeController.text),
-      });
+      await ApiService.updateLocation(
+        widget.locationId,
+        widget.locationName,
+        double.parse(feeController.text),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fee updated successfully!'), backgroundColor: Colors.green),
