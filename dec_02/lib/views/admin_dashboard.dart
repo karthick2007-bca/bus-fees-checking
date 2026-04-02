@@ -422,7 +422,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                           subtitle: Text('Fee: ₹${location['fee']}'),
                           trailing: selectedLocationIds.isEmpty
-                              ? const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF94A3B8))
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Color(0xFF4F46E5), size: 20),
+                                      onPressed: () async {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => EditLocationPage(
+                                              locationId: location['id'],
+                                              locationName: location['name'],
+                                              currentFee: (location['fee'] as num).toDouble(),
+                                            ),
+                                          ),
+                                        );
+                                        if (result == true) _loadLocations();
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                      onPressed: () => _deleteLocation(location['id'], location['name']),
+                                    ),
+                                  ],
+                                )
                               : null,
                         ),
                       );
