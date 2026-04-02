@@ -251,37 +251,47 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         return;
       }
 
+      // Capture all form values BEFORE _saveStudent() clears the form
+      final capturedName = nameCtrl.text;
+      final capturedRoll = rollCtrl.text;
+      final capturedClass = classCtrl.text;
+      final capturedParent = parentCtrl.text;
+      final capturedAddress = addressCtrl.text;
+      final capturedPhone = _currentLoggedInPhone;
+      final capturedDob = _currentLoggedInDob;
+      final capturedLocation = selectedRoute?.name ?? '';
+      final capturedAmount = selectedRoute?.fee ?? 0;
+
       await _saveStudent();
 
       final paymentId = response['paymentId']?.toString() ?? '';
-      final amount = selectedRoute?.fee ?? 0;
       final now = DateTime.now().toIso8601String();
 
       // Save transaction
       await ApiService.saveTransaction({
         'paymentId': paymentId,
         'orderId': response['orderId']?.toString() ?? '',
-        'studentId': _currentLoggedInPhone,
-        'studentName': nameCtrl.text,
-        'phone': _currentLoggedInPhone,
-        'rollNo': rollCtrl.text,
-        'amount': amount,
+        'studentId': capturedPhone,
+        'studentName': capturedName,
+        'phone': capturedPhone,
+        'rollNo': capturedRoll,
+        'amount': capturedAmount,
         'status': 'success',
         'timestamp': now,
       });
 
       // Auto-generate report based on student details after payment
       await ApiService.saveReport({
-        'phone': _currentLoggedInPhone,
-        'name': nameCtrl.text,
-        'rollNo': rollCtrl.text,
-        'studentClass': classCtrl.text,
-        'parentName': parentCtrl.text,
-        'address': addressCtrl.text,
-        'location': selectedRoute?.name ?? '',
-        'dob': _currentLoggedInDob,
+        'phone': capturedPhone,
+        'name': capturedName,
+        'rollNo': capturedRoll,
+        'studentClass': capturedClass,
+        'parentName': capturedParent,
+        'address': capturedAddress,
+        'location': capturedLocation,
+        'dob': capturedDob,
         'totalDue': 0,
-        'amountPaid': amount,
+        'amountPaid': capturedAmount,
         'status': 'succeed',
         'paymentId': paymentId,
         'paymentDate': now,
@@ -297,24 +307,24 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         ),
       );
 
-      // Navigate to report page
+      // Navigate to report page with all captured data
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => StudentReport(
-            phone: _currentLoggedInPhone!,
-            dob: _currentLoggedInDob!,
+            phone: capturedPhone!,
+            dob: capturedDob!,
             onLogout: () => _logout(),
             initialData: {
-              'name': nameCtrl.text,
-              'rollNo': rollCtrl.text,
-              'studentClass': classCtrl.text,
-              'parentName': parentCtrl.text,
-              'address': addressCtrl.text,
-              'phone': _currentLoggedInPhone,
-              'dob': _currentLoggedInDob,
-              'location': selectedRoute?.name ?? '',
-              'amountPaid': amount,
+              'name': capturedName,
+              'rollNo': capturedRoll,
+              'studentClass': capturedClass,
+              'parentName': capturedParent,
+              'address': capturedAddress,
+              'phone': capturedPhone,
+              'dob': capturedDob,
+              'location': capturedLocation,
+              'amountPaid': capturedAmount,
               'totalDue': 0,
               'status': 'succeed',
               'paymentId': paymentId,
