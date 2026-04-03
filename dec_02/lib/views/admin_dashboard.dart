@@ -1649,6 +1649,7 @@ class AllStudentsPage extends StatefulWidget {
 class _AllStudentsPageState extends State<AllStudentsPage> {
   List<dynamic> _students = [];
   bool _isLoading = true;
+  Set<String> _selectedIds = {};
 
   @override
   void initState() {
@@ -1678,11 +1679,53 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
     if (result == true) _loadStudents();
   }
 
+  Future<void> _deleteSelected() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Students'),
+        content: Text('Move ${_selectedIds.length} student(s) to recycle bin?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      for (final id in _selectedIds) {
+        await ApiService.deleteStudent(id);
+      }
+      setState(() => _selectedIds.clear());
+      await _loadStudents();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Students moved to recycle bin'), backgroundColor: Colors.orange),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Students'),
+        title: _selectedIds.isEmpty
+            ? const Text('All Students')
+            : Text('${_selectedIds.length} Selected'),
+        actions: [
+          if (_selectedIds.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: 'Delete selected',
+              onPressed: _deleteSelected,
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -1693,22 +1736,51 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                   itemCount: _students.length,
                   itemBuilder: (context, index) {
                     final student = _students[index];
+                    final id = (student['_id'] ?? student['id'])?.toString() ?? '';
+                    final isSelected = _selectedIds.contains(id);
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
+                      color: isSelected ? const Color(0xFFEEF2FF) : null,
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF4F46E5),
-                          child: Text(
-                            student['name']?.isNotEmpty == true ? student['name'][0] : 'S',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        title: Text(student['name'] ?? 'No Name'),
-                        subtitle: Text('Phone: ${student['phone']} | Class: ${student['studentClass']}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
-                          onPressed: () => _editStudent(student),
-                        ),
+                        onTap: () {
+                          if (_selectedIds.isNotEmpty) {
+                            setState(() {
+                              isSelected ? _selectedIds.remove(id) : _selectedIds.add(id);
+                            });
+                          } else {
+                            _editStudent(student);
+                          }
+                        },
+                        onLongPress: () {
+                          setState(() {
+                            isSelected ? _selectedIds.remove(id) : _selectedIds.add(id);
+                          });
+                        },
+                        leading: isSelected
+                            ? Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4F46E5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Icon(Icons.check, color: Colors.white, size: 20),
+                              )
+                            : CircleAvatar(
+                                backgroundColor: const Color(0xFF4F46E5),
+                                child: Text(
+                                  student['name']?.isNotEmpty == true ? student['name'][0] : 'S',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                        title: Text(student['phone'] ?? 'No Phone'),
+                        subtitle: Text('DOB: ${student['dob']?.toString().split('T')[0] ?? ''}'),
+                        trailing: isSelected
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
+                                onPressed: () => _editStudent(student),
+                              ),
                       ),
                     );
                   },

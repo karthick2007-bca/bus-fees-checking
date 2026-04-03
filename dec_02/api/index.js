@@ -44,7 +44,11 @@ app.put('/api/students/:phone', async (req, res) => {
 app.delete('/api/students/:id', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    await db.collection('students').deleteOne({ _id: new ObjectId(req.params.id) });
+    const student = await db.collection('students').findOne({ _id: new ObjectId(req.params.id) });
+    if (student) {
+      await db.collection('recyclebin').insertOne({ ...student, type: 'student', deletedAt: new Date().toISOString() });
+      await db.collection('students').deleteOne({ _id: new ObjectId(req.params.id) });
+    }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -52,7 +56,11 @@ app.delete('/api/students/:id', async (req, res) => {
 app.delete('/api/students', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    await db.collection('students').deleteMany({});
+    const students = await db.collection('students').find({}).toArray();
+    if (students.length > 0) {
+      await db.collection('recyclebin').insertMany(students.map(s => ({ ...s, type: 'student', deletedAt: new Date().toISOString() })));
+      await db.collection('students').deleteMany({});
+    }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -75,7 +83,11 @@ app.post('/api/locations', async (req, res) => {
 app.delete('/api/locations/:id', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    await db.collection('locations').deleteOne({ _id: new ObjectId(req.params.id) });
+    const location = await db.collection('locations').findOne({ _id: new ObjectId(req.params.id) });
+    if (location) {
+      await db.collection('recyclebin').insertOne({ ...location, type: 'location', deletedAt: new Date().toISOString() });
+      await db.collection('locations').deleteOne({ _id: new ObjectId(req.params.id) });
+    }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -123,7 +135,9 @@ app.post('/api/recyclebin/restore/:id', async (req, res) => {
     const db = await connectToDatabase();
     const item = await db.collection('recyclebin').findOne({ _id: new ObjectId(req.params.id) });
     if (item) {
-      await db.collection('students').insertOne(item);
+      const { type, deletedAt, ...data } = item;
+      const collection = type === 'location' ? 'locations' : 'students';
+      await db.collection(collection).insertOne(data);
       await db.collection('recyclebin').deleteOne({ _id: new ObjectId(req.params.id) });
     }
     res.json({ success: true });
