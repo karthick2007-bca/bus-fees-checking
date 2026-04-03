@@ -868,6 +868,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
   bool _isUploading = false;
   bool _isSubmitting = false;
   List<dynamic> _students = [];
+  String? _longPressedStudentId;
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController dobController = TextEditingController();
 
@@ -1034,6 +1035,45 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Entry'),
+        actions: [
+          if (_longPressedStudentId != null)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: 'Delete student',
+              onPressed: () async {
+                final student = _students.firstWhere(
+                  (s) => (s['_id'] ?? s['id'])?.toString() == _longPressedStudentId,
+                );
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Student'),
+                    content: Text('Move ${student['phone']} to recycle bin?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await ApiService.deleteStudent(_longPressedStudentId!);
+                  setState(() => _longPressedStudentId = null);
+                  await _loadStudents();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Student moved to recycle bin'), backgroundColor: Colors.orange),
+                    );
+                  }
+                }
+              },
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -1107,18 +1147,41 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                     itemCount: _students.length,
                     itemBuilder: (context, index) {
                       final student = _students[index];
+                      final studentId = (student['_id'] ?? student['id'])?.toString();
+                      final isSelected = _longPressedStudentId == studentId;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
+                        color: isSelected ? const Color(0xFFEEF2FF) : null,
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF4F46E5),
-                            child: Text(
-                              student['phone']?[0] ?? 'P',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
+                          onTap: () {
+                            if (_longPressedStudentId != null) {
+                              setState(() => _longPressedStudentId = null);
+                            }
+                          },
+                          onLongPress: () {
+                            setState(() {
+                              _longPressedStudentId = isSelected ? null : studentId;
+                            });
+                          },
+                          leading: isSelected
+                              ? Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4F46E5),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(Icons.check, color: Colors.white, size: 20),
+                                )
+                              : CircleAvatar(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                  child: Text(
+                                    student['phone']?[0] ?? 'P',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
                           title: Text(student['phone'] ?? 'No Phone'),
-                          subtitle: Text('DOB: ${student['dob']}'),
+                          subtitle: Text('DOB: ${student['dob']?.toString().split('T')[0] ?? ''}'),
                           trailing: const Icon(Icons.person, color: Color(0xFF4F46E5)),
                         ),
                       );
