@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' hide Border;
+import 'package:fl_chart/fl_chart.dart';
 import 'dart:io';
 import '../data/storage.dart';
 import '../services/api_service.dart';
@@ -647,50 +648,63 @@ class _AddLocationPageState extends State<AddLocationPage> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController feeController = TextEditingController();
 
+  InputDecoration _inputDec(String label, IconData icon) => InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Add Location'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Add Location', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Location Name',
-                border: OutlineInputBorder(),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 30, offset: const Offset(0, 10))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(controller: nameController, decoration: _inputDec('Location Name', Icons.location_on)),
+                  const SizedBox(height: 16),
+                  TextField(controller: feeController, keyboardType: TextInputType.number, decoration: _inputDec('Fee Amount (₹)', Icons.currency_rupee)),
+                  const SizedBox(height: 28),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (nameController.text.isNotEmpty && feeController.text.isNotEmpty) {
+                        Navigator.pop(context, {'name': nameController.text, 'fee': double.parse(feeController.text)});
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Add Location', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: feeController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Fee Amount',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty && feeController.text.isNotEmpty) {
-                  Navigator.pop(context, {
-                    'name': nameController.text,
-                    'fee': double.parse(feeController.text),
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                minimumSize: const Size(double.infinity, 48),
-              ),
-              child: const Text('Add Location'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -754,38 +768,59 @@ class _EditLocationPageState extends State<EditLocationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Edit Location Fee'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Edit Location Fee', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.locationName,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: feeController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Fee Amount',
-                prefixText: '₹ ',
-                border: OutlineInputBorder(),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 30, offset: const Offset(0, 10))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.locationName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: feeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Fee Amount',
+                      prefixText: '₹ ',
+                      prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF4F46E5)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  ElevatedButton(
+                    onPressed: _updateFee,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Update Fee', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _updateFee,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                minimumSize: const Size(double.infinity, 48),
-              ),
-              child: const Text('Update Fee'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -800,72 +835,377 @@ class AdminRolePage extends StatefulWidget {
 }
 
 class _AdminRolePageState extends State<AdminRolePage> {
-  Map<String, int> locationStudentCount = {};
+  bool _isLoading = true;
+  Map<String, double> _locationData = {};
+  Map<String, double> _yearData = {};
+  int _totalStudents = 0;
+  int _paidStudents = 0;
+  double _totalCollection = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadStudentData();
+    _loadAnalytics();
   }
 
-  Future<void> _loadStudentData() async {
-    final students = await DataStorage.loadStudents();
-    final Map<String, int> counts = {};
-    for (var student in students) {
-      counts[student.location] = (counts[student.location] ?? 0) + 1;
+  Future<void> _loadAnalytics() async {
+    try {
+      final students = await ApiService.getStudents();
+      final Map<String, double> locationMap = {};
+      final Map<String, double> yearMap = {};
+      double total = 0;
+      int paid = 0;
+
+      for (var s in students) {
+        final amount = (s['amountPaid'] as num?)?.toDouble() ?? 0;
+        if (amount <= 0) continue;
+        paid++;
+        total += amount;
+
+        // Location
+        final loc = s['location']?.toString() ?? 'Unknown';
+        locationMap[loc] = (locationMap[loc] ?? 0) + amount;
+
+        // Year
+        final dateStr = s['paymentDate'] ?? s['lastUpdated'] ?? s['registrationDate'];
+        if (dateStr != null) {
+          try {
+            final year = DateTime.parse(dateStr).year.toString();
+            yearMap[year] = (yearMap[year] ?? 0) + amount;
+          } catch (_) {}
+        }
+      }
+
+      setState(() {
+        _locationData = locationMap;
+        _yearData = yearMap;
+        _totalStudents = students.length;
+        _paidStudents = paid;
+        _totalCollection = total;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
     }
-    setState(() {
-      locationStudentCount = counts;
-    });
+  }
+
+  String _formatAmount(double value) {
+    if (value >= 100000) return '₹${(value / 100000).toStringAsFixed(1)}L';
+    if (value >= 1000) return '₹${(value / 1000).toStringAsFixed(0)}K';
+    return '₹${value.toStringAsFixed(0)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalStudents = locationStudentCount.values.fold(0, (a, b) => a + b);
-    
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Admin Role'),
+        title: const Text('Analytics Dashboard'),
+        backgroundColor: const Color(0xFF4F46E5),
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Summary Cards
+                  Row(
+                    children: [
+                      _summaryCard('Total Students', '$_totalStudents', Icons.people, const Color(0xFF4F46E5)),
+                      const SizedBox(width: 12),
+                      _summaryCard('Paid', '$_paidStudents', Icons.check_circle, const Color(0xFF10B981)),
+                      const SizedBox(width: 12),
+                      _summaryCard('Collection', _formatAmount(_totalCollection), Icons.currency_rupee, const Color(0xFFF59E0B)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Location Bar Chart
+                  _chartCard(
+                    title: 'Fees Collection by Location',
+                    subtitle: 'Total collected per bus route',
+                    icon: Icons.location_on,
+                    child: _locationData.isEmpty
+                        ? const Center(child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Text('No data available', style: TextStyle(color: Colors.grey)),
+                          ))
+                        : SizedBox(
+                            height: 220,
+                            child: _LocationBarChart(data: _locationData, formatAmount: _formatAmount),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Year Line Chart
+                  _chartCard(
+                    title: 'Fees Collection by Year',
+                    subtitle: 'Year-wise payment trend',
+                    icon: Icons.trending_up,
+                    child: _yearData.isEmpty
+                        ? const Center(child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Text('No data available', style: TextStyle(color: Colors.grey)),
+                          ))
+                        : SizedBox(
+                            height: 220,
+                            child: _YearLineChart(data: _yearData, formatAmount: _formatAmount),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _summaryCard(String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Total Students: $totalStudents',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Students by Location:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                children: locationStudentCount.entries.map((entry) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      leading: const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
-                      title: Text(entry.key),
-                      trailing: Text(
-                        '${entry.value} students',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+            const SizedBox(height: 10),
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+            Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
           ],
         ),
       ),
     );
   }
+
+  Widget _chartCard({required String title, required String subtitle, required IconData icon, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: const Color(0xFF4F46E5).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, color: const Color(0xFF4F46E5), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
 }
 
+
+class _LocationBarChart extends StatelessWidget {
+  final Map<String, double> data;
+  final String Function(double) formatAmount;
+
+  const _LocationBarChart({required this.data, required this.formatAmount});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = data.entries.toList();
+    final maxVal = data.values.reduce((a, b) => a > b ? a : b);
+    final colors = [
+      const Color(0xFF4F46E5), const Color(0xFF10B981), const Color(0xFFF59E0B),
+      const Color(0xFFEF4444), const Color(0xFF8B5CF6), const Color(0xFF06B6D4),
+    ];
+
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(entries.length, (i) {
+              final ratio = entries[i].value / maxVal;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        formatAmount(entries[i].value),
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        height: 150 * ratio,
+                        decoration: BoxDecoration(
+                          color: colors[i % colors.length],
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [colors[i % colors.length], colors[i % colors.length].withOpacity(0.6)],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: List.generate(entries.length, (i) {
+            return Expanded(
+              child: Text(
+                entries[i].key.length > 8 ? '${entries[i].key.substring(0, 7)}..' : entries[i].key,
+                style: const TextStyle(fontSize: 9, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _YearLineChart extends StatelessWidget {
+  final Map<String, double> data;
+  final String Function(double) formatAmount;
+
+  const _YearLineChart({required this.data, required this.formatAmount});
+
+  @override
+  Widget build(BuildContext context) {
+    final allYears = ['2021', '2022', '2023', '2024', '2025'];
+    final values = allYears.map((y) => data[y] ?? 0).toList();
+    final maxVal = values.reduce((a, b) => a > b ? a : b);
+    final safeMax = maxVal == 0 ? 1.0 : maxVal;
+
+    return Column(
+      children: [
+        Expanded(
+          child: CustomPaint(
+            size: const Size(double.infinity, 160),
+            painter: _LineChartPainter(values: values, maxVal: safeMax),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(allYears.length, (i) {
+            return Column(
+              children: [
+                Text(
+                  values[i] > 0 ? formatAmount(values[i]) : '',
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
+                ),
+                Text(allYears[i], style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              ],
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _LineChartPainter extends CustomPainter {
+  final List<double> values;
+  final double maxVal;
+
+  _LineChartPainter({required this.values, required this.maxVal});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) return;
+
+    final linePaint = Paint()
+      ..color = const Color(0xFF4F46E5)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [const Color(0xFF4F46E5).withOpacity(0.3), const Color(0xFF4F46E5).withOpacity(0.0)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.fill;
+
+    final dotPaint = Paint()
+      ..color = const Color(0xFF4F46E5)
+      ..style = PaintingStyle.fill;
+
+    final points = List.generate(values.length, (i) {
+      final x = i * size.width / (values.length - 1);
+      final y = size.height - (values[i] / maxVal) * size.height * 0.85 - 10;
+      return Offset(x, y);
+    });
+
+    // Fill path
+    final fillPath = Path();
+    fillPath.moveTo(points[0].dx, size.height);
+    fillPath.lineTo(points[0].dx, points[0].dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final cp1 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i].dy);
+      final cp2 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i + 1].dy);
+      fillPath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, points[i + 1].dx, points[i + 1].dy);
+    }
+    fillPath.lineTo(points.last.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, fillPaint);
+
+    // Line path
+    final linePath = Path();
+    linePath.moveTo(points[0].dx, points[0].dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final cp1 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i].dy);
+      final cp2 = Offset((points[i].dx + points[i + 1].dx) / 2, points[i + 1].dy);
+      linePath.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, points[i + 1].dx, points[i + 1].dy);
+    }
+    canvas.drawPath(linePath, linePaint);
+
+    // Dots
+    for (final p in points) {
+      canvas.drawCircle(p, 5, Paint()..color = Colors.white);
+      canvas.drawCircle(p, 4, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
 
 class UploadStudentDataPage extends StatefulWidget {
   const UploadStudentDataPage({super.key});
@@ -1043,8 +1383,12 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Student Entry'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Student Entry', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
         actions: [
           if (_longPressedStudentId != null)
             IconButton(
@@ -1089,63 +1433,85 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: dobController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date of Birth (YYYY-MM-DD)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _isSubmitting
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                              onPressed: _submitStudent,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4F46E5),
-                                minimumSize: const Size(0, 48),
-                              ),
-                              child: const Text('Add Student'),
-                            ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4))],
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      prefixIcon: const Icon(Icons.phone, color: Color(0xFF4F46E5)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _isUploading
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton.icon(
-                              onPressed: _pickAndUploadExcel,
-                              icon: const Icon(Icons.file_upload),
-                              label: const Text('Upload Excel'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                minimumSize: const Size(0, 48),
-                              ),
-                            ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: dobController,
+                    decoration: InputDecoration(
+                      labelText: 'Date of Birth (YYYY-MM-DD)',
+                      prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF4F46E5)),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _isSubmitting
+                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+                            : ElevatedButton(
+                                onPressed: _submitStudent,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4F46E5),
+                                  minimumSize: const Size(0, 48),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                child: const Text('Add Student', style: TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _isUploading
+                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+                            : ElevatedButton.icon(
+                                onPressed: _pickAndUploadExcel,
+                                icon: const Icon(Icons.file_upload),
+                                label: const Text('Upload Excel', style: TextStyle(fontWeight: FontWeight.w700)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  minimumSize: const Size(0, 48),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'Total Students: ${_students.length}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
             ),
           ),
           const SizedBox(height: 8),
@@ -1638,11 +2004,33 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Settings'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
       ),
-      body: const Center(
-        child: Text('Settings Page'),
+      body: Center(
+        child: Container(
+          padding: const EdgeInsets.all(40),
+          margin: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 8))],
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.settings, size: 48, color: Color(0xFF4F46E5)),
+              SizedBox(height: 16),
+              Text('Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+              SizedBox(height: 8),
+              Text('Coming soon...', style: TextStyle(color: Color(0xFF94A3B8))),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1868,81 +2256,68 @@ class _EditStudentPageState extends State<EditStudentPage> {
     }
   }
 
+  Widget _editField(TextEditingController ctrl, String label, IconData icon) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextField(
+      controller: ctrl,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Edit Student'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Edit Student', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 30, offset: const Offset(0, 10))],
+              ),
+              child: Column(
+                children: [
+                  _editField(nameController, 'Name', Icons.person),
+                  _editField(rollNoController, 'Roll Number', Icons.badge),
+                  _editField(classController, 'Class', Icons.school),
+                  _editField(parentNameController, 'Parent Name', Icons.family_restroom),
+                  _editField(phoneController, 'Phone', Icons.phone),
+                  _editField(emailController, 'Email', Icons.email),
+                  _editField(addressController, 'Address', Icons.home),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _updateStudent,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Update Student', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: rollNoController,
-              decoration: const InputDecoration(
-                labelText: 'Roll Number',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: classController,
-              decoration: const InputDecoration(
-                labelText: 'Class',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: parentNameController,
-              decoration: const InputDecoration(
-                labelText: 'Parent Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: 'Address',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _updateStudent,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                minimumSize: const Size(double.infinity, 48),
-              ),
-              child: const Text('Update Student'),
-            ),
-          ],
+          ),
         ),
       ),
     );

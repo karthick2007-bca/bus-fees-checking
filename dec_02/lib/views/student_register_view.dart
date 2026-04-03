@@ -603,32 +603,16 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
   // Build form field
   Widget _field(TextEditingController ctrl, String label, {bool readOnly = false}) {
-    IconData icon;
-    switch (label) {
-      case 'Student Name':
-        icon = Icons.person;
-        break;
-      case 'Roll No':
-        icon = Icons.badge;
-        break;
-      case 'Std / Section':
-        icon = Icons.school;
-        break;
-      case 'Parent Name':
-        icon = Icons.family_restroom;
-        break;
-      case 'Address':
-        icon = Icons.home;
-        break;
-      case 'Phone':
-        icon = Icons.phone;
-        break;
-      case 'Date of Birth':
-        icon = Icons.calendar_today;
-        break;
-      default:
-        icon = Icons.edit;
-    }
+    final icons = {
+      'Student Name': Icons.person,
+      'Roll No': Icons.badge,
+      'Std / Section': Icons.school,
+      'Parent Name': Icons.family_restroom,
+      'Address': Icons.home,
+      'Phone': Icons.phone,
+      'Date of Birth': Icons.calendar_today,
+    };
+    final icon = icons[label] ?? Icons.edit;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -637,18 +621,30 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         readOnly: readOnly,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon),
-          filled: readOnly,
-          fillColor: readOnly ? Colors.grey.shade100 : null,
+          prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
+          filled: true,
+          fillColor: readOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
         ),
         validator: (v) {
           if (v == null || v.isEmpty) return 'Required';
           if (label == 'Date of Birth') {
-            try {
-              DateTime.parse(v);
-            } catch (e) {
-              return 'Invalid date format. Use YYYY-MM-DD';
-            }
+            try { DateTime.parse(v); } catch (e) { return 'Invalid date format. Use YYYY-MM-DD'; }
           }
           return null;
         },
@@ -661,46 +657,59 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     // Show loading or session invalid state
     if (!_isSessionValid) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Student Registration'),
-        ),
+        backgroundColor: const Color(0xFFF8FAFC),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              const Text(
-                'Session Expired',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text('Please login again to continue'),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _logout,
-                child: const Text('Go to Login'),
-              ),
-            ],
+          child: Container(
+            width: 360,
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 40, offset: const Offset(0, 20))],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
+                  child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                ),
+                const SizedBox(height: 24),
+                const Text('Session Expired', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                const SizedBox(height: 8),
+                const Text('Please login again to continue', style: TextStyle(color: Color(0xFF94A3B8))),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _logout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5),
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Go to Login', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Student Registration'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Student Registration', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
         leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            setState(() {
-              _isFrameOpen = !_isFrameOpen;
-            });
-          },
+          icon: const Icon(Icons.menu, color: Color(0xFF4F46E5)),
+          onPressed: () => setState(() => _isFrameOpen = !_isFrameOpen),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Color(0xFF94A3B8)),
             onPressed: _logout,
             tooltip: 'Logout',
           ),
@@ -708,148 +717,156 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       ),
       body: Stack(
         children: [
-          // Main Content
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        // Display current user info
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info, color: Colors.blue),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Logged in as: $_currentLoggedInPhone',
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
-                                ),
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFC7D2FE)),
                               ),
-                            ],
-                          ),
-                        ),
-                        
-                        _field(nameCtrl, 'Student Name'),
-                        _field(rollCtrl, 'Roll No'),
-                        _field(classCtrl, 'Std / Section'),
-                        _field(parentCtrl, 'Parent Name'),
-                        _field(addressCtrl, 'Address'),
-                        
-                        // Hidden fields for phone and dob (display them read-only)
-                        _field(phoneCtrl, 'Phone', readOnly: true),
-                        _field(dobCtrl, 'Date of Birth', readOnly: true),
-
-                        const SizedBox(height: 16),
-
-                        // Location Dropdown
-                        _isLoadingRoutes
-                            ? const Center(child: CircularProgressIndicator())
-                            : DropdownButtonFormField<location_model.Route>(
-                                value: selectedRoute,
-                                decoration: const InputDecoration(
-                                  labelText: 'Location',
-                                  prefixIcon: Icon(Icons.location_on),
-                                ),
-                                hint: const Text('Select Location'),
-                                items: routes.map((r) {
-                                  return DropdownMenuItem<location_model.Route>(
-                                    value: r,
-                                    child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})'),
-                                  );
-                                }).toList(),
-                                onChanged: (location_model.Route? route) {
-                                  setState(() {
-                                    selectedRoute = route;
-                                    amountCtrl.text = route?.fee.toString() ?? '';
-                                  });
-                                },
-                                validator: (v) => v == null ? 'Select location' : null,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.person_pin, color: Color(0xFF4F46E5)),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Logged in as: $_currentLoggedInPhone',
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF4F46E5)),
+                                    ),
+                                  ),
+                                ],
                               ),
-
-                        const SizedBox(height: 12),
-
-                        // Amount Field
-                        TextFormField(
-                          controller: amountCtrl,
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Amount',
-                            prefixText: '₹ ',
-                            prefixIcon: Icon(Icons.currency_rupee),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Pay Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
                             ),
-                            child: const Text('Pay Now'),
-                          ),
+                            _field(nameCtrl, 'Student Name'),
+                            _field(rollCtrl, 'Roll No'),
+                            _field(classCtrl, 'Std / Section'),
+                            _field(parentCtrl, 'Parent Name'),
+                            _field(addressCtrl, 'Address'),
+                            _field(phoneCtrl, 'Phone', readOnly: true),
+                            _field(dobCtrl, 'Date of Birth', readOnly: true),
+                            const SizedBox(height: 8),
+                            _isLoadingRoutes
+                                ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+                                : DropdownButtonFormField<location_model.Route>(
+                                    value: selectedRoute,
+                                    decoration: InputDecoration(
+                                      labelText: 'Location',
+                                      prefixIcon: const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFC),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
+                                      ),
+                                    ),
+                                    hint: const Text('Select Location'),
+                                    items: routes.map((r) => DropdownMenuItem<location_model.Route>(
+                                      value: r,
+                                      child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})'),
+                                    )).toList(),
+                                    onChanged: (location_model.Route? route) {
+                                      setState(() {
+                                        selectedRoute = route;
+                                        amountCtrl.text = route?.fee.toString() ?? '';
+                                      });
+                                    },
+                                    validator: (v) => v == null ? 'Select location' : null,
+                                  ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: amountCtrl,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'Amount',
+                                prefixText: '₹ ',
+                                prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF4F46E5)),
+                                filled: true,
+                                fillColor: const Color(0xFFF1F5F9),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            ElevatedButton(
+                              onPressed: submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4F46E5),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 56),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.payment, size: 20),
+                                  SizedBox(width: 10),
+                                  Text('Pay Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-
-          // Side Menu Frame
           if (_isFrameOpen)
             Positioned(
               left: 0,
               top: 0,
               bottom: 0,
-              width: 250,
+              width: 260,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border(right: BorderSide(color: Colors.grey.shade300, width: 2)),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Edit Report',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF4F46E5),
-                          ),
-                        ),
+                        const Text('Menu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
                         IconButton(
-                          icon: const Icon(Icons.close),
+                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
                           onPressed: () => setState(() => _isFrameOpen = false),
                         ),
                       ],
                     ),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.edit_location),
-                      title: const Text('Change Location'),
+                    const SizedBox(height: 16),
+                    InkWell(
                       onTap: () async {
-                        // Verify session before navigating
                         if (await _verifySession()) {
                           final result = await Navigator.push(
                             context,
@@ -861,15 +878,26 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                               ),
                             ),
                           );
-                          
-                          // Refresh after returning from edit page
-                          if (mounted) {
-                            _initializeView();
-                          }
+                          if (mounted) _initializeView();
                         } else {
                           _showSessionExpiredDialog();
                         }
                       },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.edit_location, color: Color(0xFF4F46E5)),
+                            SizedBox(width: 12),
+                            Text('Change Location', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF4F46E5))),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
