@@ -301,26 +301,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           color: const Color(0xFFF59E0B),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$paidStudents',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const PaidUnpaidStudentsPage(),
                               ),
-                            ),
-                            const Text(
-                              'Paid Students',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.white, size: 24),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$paidStudents',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                              const Text(
+                                'Paid Students',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1939,6 +1949,154 @@ class _EditStudentPageState extends State<EditStudentPage> {
   }
 }
 
+
+class PaidUnpaidStudentsPage extends StatefulWidget {
+  const PaidUnpaidStudentsPage({super.key});
+
+  @override
+  State<PaidUnpaidStudentsPage> createState() => _PaidUnpaidStudentsPageState();
+}
+
+class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  List<dynamic> _paidStudents = [];
+  List<dynamic> _unpaidStudents = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadStudents();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadStudents() async {
+    try {
+      final students = await ApiService.getStudents();
+      setState(() {
+        _paidStudents = students.where((s) => s['status'] == 'succeed').toList();
+        _unpaidStudents = students.where((s) => s['status'] != 'succeed').toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildStudentCard(Map<String, dynamic> student, bool isPaid) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+          child: Icon(
+            isPaid ? Icons.check : Icons.pending,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          student['name']?.isNotEmpty == true ? student['name'] : student['phone'] ?? 'N/A',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Phone: ${student['phone'] ?? 'N/A'}'),
+            Text('Roll No: ${student['rollNo'] ?? 'N/A'}'),
+            Text('Class: ${student['studentClass'] ?? 'N/A'}'),
+            Text('Location: ${student['location'] ?? 'N/A'}'),
+            Text(
+              isPaid
+                  ? 'Paid: ₹${student['amountPaid'] ?? 0}'
+                  : 'Due: ₹${student['totalDue'] ?? 0}',
+              style: TextStyle(
+                color: isPaid ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        isThreeLine: true,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Students Payment Status'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.check_circle),
+              text: 'Paid (${_paidStudents.length})',
+            ),
+            Tab(
+              icon: const Icon(Icons.pending),
+              text: 'Unpaid (${_unpaidStudents.length})',
+            ),
+          ],
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                // Page 1 - Paid Students
+                _paidStudents.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text('No paid students yet', style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _paidStudents.length,
+                        itemBuilder: (context, index) =>
+                            _buildStudentCard(_paidStudents[index], true),
+                      ),
+                // Page 2 - Unpaid Students
+                _unpaidStudents.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.celebration, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text('All students have paid!', style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _unpaidStudents.length,
+                        itemBuilder: (context, index) =>
+                            _buildStudentCard(_unpaidStudents[index], false),
+                      ),
+              ],
+            ),
+    );
+  }
+}
 
 class AllLocationsPage extends StatefulWidget {
   const AllLocationsPage({super.key});
