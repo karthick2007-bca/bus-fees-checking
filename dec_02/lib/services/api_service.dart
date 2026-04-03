@@ -48,7 +48,10 @@ class ApiService {
 
   // --- 2. LOCATIONS ---
   static Future<List<dynamic>> getLocations() async {
-    final response = await http.get(Uri.parse('$baseUrl/api/locations'), headers: _headers).timeout(timeout);
+    final uri = Uri.parse('$baseUrl/api/locations').replace(queryParameters: {
+      't': DateTime.now().millisecondsSinceEpoch.toString(),
+    });
+    final response = await http.get(uri, headers: _headers).timeout(timeout);
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Error: ${response.statusCode}');
   }

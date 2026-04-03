@@ -899,6 +899,33 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
 
     setState(() => _isSubmitting = true);
     try {
+      // Check for duplicate phone + dob
+      final existing = _students.any(
+        (s) => s['phone']?.toString() == phoneController.text.trim() &&
+               s['dob']?.toString().split('T')[0] == dobController.text.trim(),
+      );
+
+      if (existing) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Duplicate Entry'),
+              content: Text(
+                'Student with Phone: ${phoneController.text} and DOB: ${dobController.text} already exists.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        setState(() => _isSubmitting = false);
+        return;
+      }
       await ApiService.addStudent({
         'id': DateTime.now().millisecondsSinceEpoch.toString(),
         'name': '',
