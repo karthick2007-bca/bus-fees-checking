@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import '../data/storage.dart';
 import '../services/api_service.dart';
 import '../models/location.dart' as location_model;
@@ -185,6 +186,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
       body: Stack(
         children: [
+          const Positioned.fill(child: _WaveBackground()),
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -635,6 +637,89 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+}
+
+class _WaveBackground extends StatefulWidget {
+  const _WaveBackground();
+
+  @override
+  State<_WaveBackground> createState() => _WaveBackgroundState();
+}
+
+class _WaveBackgroundState extends State<_WaveBackground>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _WavePainter(_controller.value),
+          child: Container(),
+        );
+      },
+    );
+  }
+}
+
+class _WavePainter extends CustomPainter {
+  final double animValue;
+  _WavePainter(this.animValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Background gradient
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFE0F7FA), Color(0xFFE8F5E9)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    _drawWave(canvas, size, animValue, const Color(0x4000BCD4), 0.35, 0.0);
+    _drawWave(canvas, size, animValue, const Color(0x3066BB6A), 0.45, 0.3);
+    _drawWave(canvas, size, animValue, const Color(0x3029B6F6), 0.55, 0.6);
+  }
+
+  void _drawWave(Canvas canvas, Size size, double anim, Color color,
+      double heightRatio, double offset) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    final waveHeight = size.height * 0.06;
+    final baseY = size.height * heightRatio;
+    final phase = (anim + offset) * 2 * math.pi;
+
+    path.moveTo(0, baseY);
+    for (double x = 0; x <= size.width; x++) {
+      final y = baseY + math.sin((x / size.width * 2 * math.pi) + phase) * waveHeight;
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter old) => old.animValue != animValue;
 }
 
 class AddLocationPage extends StatefulWidget {

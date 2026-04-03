@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -22,30 +23,20 @@ class StudentLoginView extends StatefulWidget {
 
 class _StudentLoginViewState extends State<StudentLoginView>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _userIdController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _userIdController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isCheckingReport = false;
-  String? _errorMessage;
   bool _obscurePassword = true;
-
+  String? _errorMessage;
   late AnimationController _animController;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
 
   @override
   void initState() {
     super.initState();
     _clearExistingSession();
-    _animController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _fadeIn =
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideUp =
-        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
-            CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
+    _animController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
   }
 
   @override
@@ -70,8 +61,7 @@ class _StudentLoginViewState extends State<StudentLoginView>
       final userId = _userIdController.text.trim();
       final password = _passwordController.text.trim();
       final found = students.firstWhere(
-        (s) => s['phone']?.toString() == userId &&
-            s['dob']?.toString().split('T')[0] == password,
+        (s) => s['phone']?.toString() == userId && s['dob']?.toString().split('T')[0] == password,
         orElse: () => null,
       );
       if (found != null) {
@@ -97,8 +87,7 @@ class _StudentLoginViewState extends State<StudentLoginView>
       final userId = _userIdController.text.trim();
       final password = _passwordController.text.trim();
       final found = students.firstWhere(
-        (s) => s['phone']?.toString() == userId &&
-            s['dob']?.toString().split('T')[0] == password,
+        (s) => s['phone']?.toString() == userId && s['dob']?.toString().split('T')[0] == password,
         orElse: () => null,
       );
       if (found != null) {
@@ -141,212 +130,52 @@ class _StudentLoginViewState extends State<StudentLoginView>
       if (d < 1 || d > 31) return 'Invalid day';
       final date = DateTime(y, m, d);
       if (date.isAfter(DateTime.now())) return 'Date cannot be in future';
-      if (date.isAfter(DateTime(DateTime.now().year - 3, m, d))) return 'Must be at least 3 years old';
     } catch (_) {
       return 'Invalid date';
     }
     return null;
   }
 
-  InputDecoration _inputDec(String hint, IconData icon, {Widget? suffix}) =>
-      InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 14),
-        prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: const Color(0xFFF8FAFC),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEF4444)),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
-        ),
-      );
-
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
-          Positioned.fill(
-            child: Image.network(
-              'https://img.freepik.com/premium-photo/free-vector-bus-background-design_951220-28959.jpg',
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4338CA)],
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stack) => Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4338CA)],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Dark overlay
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.55),
-            ),
-          ),
-
-          Center(
-            child: FadeTransition(
-              opacity: _fadeIn,
-              child: SlideTransition(
-                position: _slideUp,
-                child: isWide ? _wideLayout() : _narrowLayout(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _circle(double size, Color color) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-      );
-
-  Widget _wideLayout() {
-    return Container(
-      width: 900,
-      constraints: const BoxConstraints(maxHeight: 640),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 60,
-              offset: const Offset(0, 24))
-        ],
-      ),
-      child: Row(
-        children: [
-          // Left panel
+          // Dark gradient background
           Container(
-            width: 340,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF312E81), Color(0xFF6366F1)],
+                colors: [Color(0xFF050010), Color(0xFF0A0A2E), Color(0xFF001428), Color(0xFF030810)],
+                stops: [0.0, 0.35, 0.7, 1.0],
               ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(32),
-                bottomLeft: Radius.circular(32),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(top: -40, right: -40,
-                    child: _circle(180, Colors.white.withOpacity(0.06))),
-                Positioned(bottom: -60, left: -30,
-                    child: _circle(220, Colors.white.withOpacity(0.05))),
-                Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: _handleBack,
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.arrow_back_rounded,
-                                  color: Colors.white, size: 16),
-                            ),
-                            const SizedBox(width: 10),
-                            Text('Back',
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(Icons.school_rounded,
-                            color: Colors.white, size: 32),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text('Student Portal',
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: -0.5)),
-                      const SizedBox(height: 10),
-                      Text('Access your transport\nfee details and reports.',
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.6),
-                              height: 1.6)),
-                      const SizedBox(height: 32),
-                      _featureChip(Icons.receipt_long_rounded, 'Payment Receipts'),
-                      const SizedBox(height: 10),
-                      _featureChip(Icons.directions_bus_rounded, 'Bus Route Info'),
-                      const SizedBox(height: 10),
-                      _featureChip(Icons.history_rounded, 'Payment History'),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
-
-          // Right form
-          Expanded(
+          // Plexus animation
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _animController,
+              builder: (_, __) => CustomPaint(
+                painter: _StudentPlexusPainter(_animController.value),
+              ),
+            ),
+          ),
+          // Glow orbs
+          Positioned(top: -120, right: -80,
+            child: _glowOrb(400, const Color(0xFF4F46E5).withOpacity(0.15))),
+          Positioned(bottom: -100, left: -100,
+            child: _glowOrb(350, const Color(0xFF06B6D4).withOpacity(0.12))),
+          Positioned(top: MediaQuery.of(context).size.height * 0.5, left: -50,
+            child: _glowOrb(200, const Color(0xFF8B5CF6).withOpacity(0.1))),
+          // Card
+          Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(48),
-              child: _formContent(),
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: _glassCard(),
+              ),
             ),
           ),
         ],
@@ -354,273 +183,277 @@ class _StudentLoginViewState extends State<StudentLoginView>
     );
   }
 
-  Widget _narrowLayout() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, 12))
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [Color(0xFF312E81), Color(0xFF6366F1)]),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(22),
-                    topRight: Radius.circular(22),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _handleBack,
-                      child: Container(
+  Widget _glowOrb(double size, Color color) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(colors: [color, Colors.transparent]),
+    ),
+  );
+
+  Widget _glassCard() {
+    final busy = _isLoading || _isCheckingReport;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white.withOpacity(0.11), Colors.white.withOpacity(0.04)],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.13), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.2), blurRadius: 60, spreadRadius: -10),
+          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 40),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Padding(
+          padding: const EdgeInsets.all(36),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Back
+                GestureDetector(
+                  onTap: _handleBack,
+                  child: Row(
+                    children: [
+                      Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
                         ),
-                        child: const Icon(Icons.arrow_back_rounded,
-                            color: Colors.white, size: 14),
+                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 14),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.school_rounded,
-                        color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('Student Portal',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900)),
-                  ],
+                      const SizedBox(width: 8),
+                      Text('Back', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: _formContent(),
-              ),
-            ],
+                const SizedBox(height: 28),
+                // Icon
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)]),
+                    boxShadow: [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.5), blurRadius: 20, spreadRadius: -4)],
+                  ),
+                  child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+                ),
+                const SizedBox(height: 18),
+                const Text('Student Access',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
+                const SizedBox(height: 6),
+                Text('View your transport fee summary',
+                  style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.5))),
+                const SizedBox(height: 28),
+                // Phone
+                _glassField(_userIdController, 'Phone Number (User ID)', Icons.phone_rounded, false, _validatePhone),
+                const SizedBox(height: 14),
+                // DOB
+                _glassField(_passwordController, 'Date of Birth (YYYY-MM-DD)', Icons.calendar_today_rounded, true, _validateDob),
+                // Error
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_rounded, color: Colors.redAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500))),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                // Dashboard button
+                _gradientButton(
+                  onTap: busy ? null : _handleLogin,
+                  colors: const [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                  child: _isLoading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.dashboard_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 10),
+                        Text('Open Dashboard', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                      ]),
+                ),
+                const SizedBox(height: 10),
+                // Register button
+                SizedBox(
+                  width: double.infinity, height: 48,
+                  child: OutlinedButton(
+                    onPressed: busy ? null : () => _clearExistingSession().then((_) { if (mounted) widget.onRegister(); }),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.25), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: Colors.white.withOpacity(0.06),
+                    ),
+                    child: const Text('New Student? Register Here', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Check report button
+                _gradientButton(
+                  onTap: busy ? null : _handleCheckReport,
+                  colors: const [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                  child: _isCheckingReport
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 10),
+                        Text('Check My Report', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                      ]),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _formContent() {
-    final busy = _isLoading || _isCheckingReport;
-    return Form(
-      key: _formKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Welcome back',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.5)),
-          const SizedBox(height: 4),
-          const Text('Sign in with your phone & date of birth',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF94A3B8),
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(height: 20),
-
-          _label('PHONE NUMBER'),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _userIdController,
-            keyboardType: TextInputType.phone,
-            validator: _validatePhone,
-            onChanged: (_) => setState(() => _errorMessage = null),
-            decoration: _inputDec('Enter 10-digit phone number', Icons.phone_rounded),
+  Widget _gradientButton({required VoidCallback? onTap, required List<Color> colors, required Widget child}) {
+    return SizedBox(
+      width: double.infinity, height: 50,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          padding: EdgeInsets.zero,
+        ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: onTap == null ? [Colors.grey.shade700, Colors.grey.shade600] : colors),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: onTap == null ? [] : [BoxShadow(color: colors[0].withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 6))],
           ),
-
-          const SizedBox(height: 14),
-
-          _label('DATE OF BIRTH (PASSWORD)'),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            validator: _validateDob,
-            onChanged: (_) => setState(() => _errorMessage = null),
-            onFieldSubmitted: (_) => _handleLogin(),
-            decoration: _inputDec(
-              'YYYY-MM-DD',
-              Icons.calendar_today_rounded,
-              suffix: IconButton(
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  color: const Color(0xFF94A3B8),
-                  size: 20,
-                ),
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-              ),
-            ),
-          ),
-
-          // Error
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFECACA)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_rounded,
-                      color: Color(0xFFEF4444), size: 16),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(_errorMessage!,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFFDC2626),
-                            fontWeight: FontWeight.w500)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 18),
-
-          // Open Dashboard button
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              onPressed: busy ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 22, height: 22,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5))
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.dashboard_rounded, size: 18),
-                        SizedBox(width: 10),
-                        Text('Open Dashboard',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w800)),
-                      ],
-                    ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Register button
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: OutlinedButton(
-              onPressed: busy
-                  ? null
-                  : () => _clearExistingSession()
-                      .then((_) { if (mounted) widget.onRegister(); }),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4F46E5),
-                side: const BorderSide(color: Color(0xFFE0E7FF), width: 2),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text('New Student? Register Here',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Check report button
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: TextButton(
-              onPressed: busy ? null : _handleCheckReport,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF6366F1),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                backgroundColor: const Color(0xFFF5F3FF),
-              ),
-              child: _isCheckingReport
-                  ? const SizedBox(
-                      width: 20, height: 20,
-                      child: CircularProgressIndicator(
-                          color: Color(0xFF4F46E5), strokeWidth: 2.5))
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long_rounded, size: 17),
-                        SizedBox(width: 8),
-                        Text('Check My Report',
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-            ),
-          ),
-        ],
+          child: Container(alignment: Alignment.center, child: child),
+        ),
       ),
     );
   }
 
-  Widget _label(String text) => Text(
-        text,
-        style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF64748B),
-            letterSpacing: 1.5),
-      );
+  Widget _glassField(TextEditingController ctrl, String hint, IconData icon, bool isPassword, String? Function(String?) validator) {
+    return TextFormField(
+      controller: ctrl,
+      obscureText: isPassword ? _obscurePassword : false,
+      keyboardType: isPassword ? TextInputType.text : TextInputType.phone,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      onChanged: (_) => setState(() => _errorMessage = null),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.45), size: 20),
+        suffixIcon: isPassword ? IconButton(
+          icon: Icon(_obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+            color: Colors.white.withOpacity(0.45), size: 20),
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        ) : null,
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.07),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.15))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.15))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Colors.redAccent)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
+        errorStyle: const TextStyle(color: Colors.redAccent),
+      ),
+    );
+  }
+}
 
-  Widget _featureChip(IconData icon, String label) => Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Colors.white, size: 14),
-          ),
-          const SizedBox(width: 10),
-          Text(label,
-              style: TextStyle(
-                  color: Colors.white.withOpacity(0.75),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600)),
-        ],
-      );
+class _StudentPlexusPainter extends CustomPainter {
+  final double t;
+  static final _rng = math.Random(99);
+  static late List<_SNode> _nodes;
+  static bool _initialized = false;
+
+  _StudentPlexusPainter(this.t) {
+    if (!_initialized) {
+      _nodes = List.generate(45, (_) => _SNode(
+        x: _rng.nextDouble(), y: _rng.nextDouble(),
+        vx: (_rng.nextDouble() - 0.5) * 0.0012,
+        vy: (_rng.nextDouble() - 0.5) * 0.0012,
+      ));
+      _initialized = true;
+    }
+    for (final n in _nodes) {
+      n.x = (n.x + n.vx) % 1.0;
+      n.y = (n.y + n.vy) % 1.0;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()..strokeWidth = 0.6..style = PaintingStyle.stroke;
+    final dotPaint = Paint()..style = PaintingStyle.fill;
+    final triPaint = Paint()..strokeWidth = 0.7..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < _nodes.length; i++) {
+      for (int j = i + 1; j < _nodes.length; j++) {
+        final dx = _nodes[i].x - _nodes[j].x;
+        final dy = _nodes[i].y - _nodes[j].y;
+        final dist = math.sqrt(dx * dx + dy * dy);
+        if (dist < 0.2) {
+          final opacity = (1 - dist / 0.2) * 0.35;
+          linePaint.color = Color.lerp(const Color(0xFF4F46E5), const Color(0xFF06B6D4), _nodes[i].y)!.withOpacity(opacity);
+          canvas.drawLine(
+            Offset(_nodes[i].x * size.width, _nodes[i].y * size.height),
+            Offset(_nodes[j].x * size.width, _nodes[j].y * size.height),
+            linePaint,
+          );
+        }
+      }
+    }
+
+    for (int i = 0; i < _nodes.length - 2; i += 3) {
+      final a = Offset(_nodes[i].x * size.width, _nodes[i].y * size.height);
+      final b = Offset(_nodes[i + 1].x * size.width, _nodes[i + 1].y * size.height);
+      final c = Offset(_nodes[i + 2].x * size.width, _nodes[i + 2].y * size.height);
+      if ((a - b).distance < size.width * 0.22) {
+        triPaint.color = const Color(0xFF4F46E5).withOpacity(0.07);
+        triPaint.style = PaintingStyle.fill;
+        final path = Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(c.dx, c.dy)..close();
+        canvas.drawPath(path, triPaint);
+        triPaint.color = const Color(0xFF06B6D4).withOpacity(0.12);
+        triPaint.style = PaintingStyle.stroke;
+        canvas.drawPath(path, triPaint);
+      }
+    }
+
+    for (final n in _nodes) {
+      final pos = Offset(n.x * size.width, n.y * size.height);
+      dotPaint.color = Color.lerp(const Color(0xFF4F46E5), const Color(0xFF06B6D4), n.y)!.withOpacity(0.65);
+      canvas.drawCircle(pos, 2.5, dotPaint);
+      dotPaint.color = Colors.white.withOpacity(0.45);
+      canvas.drawCircle(pos, 1.2, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StudentPlexusPainter old) => old.t != t;
+}
+
+class _SNode {
+  double x, y, vx, vy;
+  _SNode({required this.x, required this.y, required this.vx, required this.vy});
 }
