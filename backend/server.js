@@ -478,6 +478,43 @@ app.delete('/api/recyclebin/:id', async (req, res) => {
 });
 
 // Update student by MongoDB _id - updates student AND report together
+app.put('/api/students/update', async (req, res) => {
+  try {
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    let student;
+    try {
+      student = await Student.findByIdAndUpdate(
+        id,
+        { $set: req.body },
+        { new: true }
+      );
+    } catch (e) {}
+    if (!student) {
+      student = await Student.findOneAndUpdate(
+        { id: id },
+        { $set: req.body },
+        { new: true }
+      );
+    }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    await Report.updateMany(
+      { phone: student.phone },
+      { $set: {
+        name: req.body.name ?? student.name,
+        rollNo: req.body.rollNo ?? student.rollNo,
+        studentClass: req.body.studentClass ?? student.studentClass,
+        parentName: req.body.parentName ?? student.parentName,
+        address: req.body.address ?? student.address,
+      }}
+    );
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update student by MongoDB _id - updates student AND report together
 app.put('/api/students/id/:id', async (req, res) => {
   try {
     let student;
@@ -517,8 +554,20 @@ app.put('/api/students/:phone', async (req, res) => {
   try {
     const student = await Student.findOneAndUpdate(
       { phone: req.params.phone },
-      req.body,
+      { $set: req.body },
       { new: true }
+    );
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    // Also update all reports for this student
+    await Report.updateMany(
+      { phone: req.params.phone },
+      { $set: {
+        name: req.body.name ?? student.name,
+        rollNo: req.body.rollNo ?? student.rollNo,
+        studentClass: req.body.studentClass ?? student.studentClass,
+        parentName: req.body.parentName ?? student.parentName,
+        address: req.body.address ?? student.address,
+      }}
     );
     res.json(student);
   } catch (err) {

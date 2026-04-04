@@ -2432,18 +2432,16 @@ class _EditStudentPageState extends State<EditStudentPage> {
   Future<void> _updateStudent() async {
     try {
       final studentId = (widget.student['_id'] ?? widget.student['id'])?.toString() ?? '';
+      final phone = widget.student['phone']?.toString() ?? '';
 
-      if (studentId.isEmpty) {
-        throw Exception('Student ID not found');
-      }
+      if (phone.isEmpty) throw Exception('Student phone not found');
 
-      // Single API call - backend updates both student AND report
       await ApiService.updateStudentById(studentId, {
         'name': nameController.text.trim(),
         'rollNo': rollNoController.text.trim(),
         'studentClass': classController.text.trim(),
         'parentName': parentNameController.text.trim(),
-        'phone': phoneController.text.trim(),
+        'phone': phone, // keep original phone for lookup
         'email': emailController.text.trim(),
         'address': addressController.text.trim(),
       });

@@ -39,10 +39,13 @@ class ApiService {
   }
 
   static Future<void> updateStudentById(String id, Map<String, dynamic> data) async {
-    final response = await http.put(Uri.parse('$baseUrl/api/students/id/$id'),
+    // Use phone-based update which works reliably on Vercel
+    final phone = data['phone']?.toString() ?? '';
+    if (phone.isEmpty) throw Exception('Phone not found');
+    final response = await http.put(Uri.parse('$baseUrl/api/students/$phone'),
         headers: _headers, body: jsonEncode(data)).timeout(timeout);
     if (response.statusCode != 200) {
-      throw Exception('Update failed: ${response.body}');
+      throw Exception('Update failed: ${response.statusCode}');
     }
   }
 
