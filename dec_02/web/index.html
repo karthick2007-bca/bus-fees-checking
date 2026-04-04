@@ -1,70 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="./">
+  <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Bus Fee Management System">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="dec_02">
+  <meta name="apple-mobile-web-app-title" content="TransitPay">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>dec_02</title>
+  <title>TransitPay</title>
   <link rel="manifest" href="manifest.json">
-  <script>
-    // Load Razorpay dynamically to avoid blocking
-    function loadRazorpay(callback) {
-      if (window.Razorpay) { callback(); return; }
-      var script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = callback;
-      script.onerror = function() { console.error('Razorpay failed to load'); };
-      document.head.appendChild(script);
-    }
 
+  <!-- Razorpay preloaded -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <script>
     function openRazorpay(options) {
-      loadRazorpay(function() {
-        options.handler = function(response) {
-          if (typeof _dartPaymentSuccess === 'function') {
-            _dartPaymentSuccess(
-              response.razorpay_payment_id || '',
-              response.razorpay_order_id || '',
-              response.razorpay_signature || ''
-            );
+      if (!window.Razorpay) {
+        alert('Payment service not available. Please refresh and try again.');
+        return;
+      }
+      options.handler = function(response) {
+        if (typeof window._dartPaymentSuccess === 'function') {
+          window._dartPaymentSuccess(
+            response.razorpay_payment_id || '',
+            response.razorpay_order_id || '',
+            response.razorpay_signature || ''
+          );
+        }
+      };
+      options.modal = {
+        ondismiss: function() {
+          if (typeof window._dartPaymentDismiss === 'function') {
+            window._dartPaymentDismiss();
           }
-        };
-        options.modal = {
-          ondismiss: function() {
-            if (typeof _dartPaymentDismiss === 'function') {
-              _dartPaymentDismiss();
-            }
-          }
-        };
-        var rzp = new Razorpay(options);
-        rzp.open();
-      });
+        }
+      };
+      var rzp = new Razorpay(options);
+      rzp.open();
     }
   </script>
 </head>
