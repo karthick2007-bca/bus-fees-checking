@@ -18,8 +18,6 @@ class LandingView extends StatefulWidget {
 class _LandingViewState extends State<LandingView>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
   int? _hoveredCard;
 
   @override
@@ -29,23 +27,6 @@ class _LandingViewState extends State<LandingView>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat();
-
-    _fadeIn = CurvedAnimation(
-      parent: AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 900),
-      )..forward(),
-      curve: Curves.easeOut,
-    );
-
-    _slideUp = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
-        .animate(CurvedAnimation(
-      parent: AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 900),
-      )..forward(),
-      curve: Curves.easeOut,
-    ));
   }
 
   @override
@@ -87,11 +68,11 @@ class _LandingViewState extends State<LandingView>
           // Glow orbs
           Positioned(
             top: -100, left: -80,
-            child: _glowOrb(350, const Color(0xFF6C00FF).withOpacity(0.12)),
+            child: _glowOrb(350, const Color(0xFF6C00FF).withValues(alpha: 0.12)),
           ),
           Positioned(
             bottom: -80, right: -80,
-            child: _glowOrb(300, const Color(0xFF0066FF).withOpacity(0.1)),
+            child: _glowOrb(300, const Color(0xFF0066FF).withValues(alpha: 0.1)),
           ),
           // Content
           Center(
@@ -113,7 +94,7 @@ class _LandingViewState extends State<LandingView>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF6C00FF).withOpacity(0.4),
+                            color: const Color(0xFF6C00FF).withValues(alpha: 0.4),
                             blurRadius: 24,
                             spreadRadius: -4,
                           ),
@@ -143,7 +124,7 @@ class _LandingViewState extends State<LandingView>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
-                        color: Colors.white.withOpacity(0.45),
+                        color: Colors.white.withValues(alpha: 0.45),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -153,7 +134,7 @@ class _LandingViewState extends State<LandingView>
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w300,
-                        color: Colors.white.withOpacity(0.35),
+                        color: Colors.white.withValues(alpha: 0.35),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -198,7 +179,7 @@ class _LandingViewState extends State<LandingView>
                           'Secure  ·  Fast  ·  Reliable',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             letterSpacing: 1.5,
                             fontWeight: FontWeight.w400,
                           ),
@@ -231,7 +212,7 @@ class _LandingViewState extends State<LandingView>
         height: 5,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
       );
 }
@@ -276,12 +257,12 @@ class _RoleCard extends StatelessWidget {
             colors: gradientColors,
           ),
           border: Border.all(
-            color: Colors.white.withOpacity(hovered ? 0.15 : 0.08),
+            color: Colors.white.withValues(alpha: hovered ? 0.15 : 0.08),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: glowColor.withOpacity(hovered ? 0.35 : 0.15),
+              color: glowColor.withValues(alpha: hovered ? 0.35 : 0.15),
               blurRadius: hovered ? 40 : 20,
               offset: const Offset(0, 10),
             ),
@@ -292,7 +273,7 @@ class _RoleCard extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(24),
-            splashColor: Colors.white.withOpacity(0.06),
+            splashColor: Colors.white.withValues(alpha: 0.06),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -302,10 +283,10 @@ class _RoleCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Icon(icon, size: 26, color: iconColor),
@@ -331,7 +312,7 @@ class _RoleCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w300,
-                            color: Colors.white.withOpacity(0.55),
+                            color: Colors.white.withValues(alpha: 0.55),
                             height: 1.4,
                           ),
                         ),
@@ -347,9 +328,9 @@ class _RoleCard extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       child: Icon(
                         Icons.arrow_forward_rounded,
@@ -402,7 +383,7 @@ class _LandingPlexusPainter extends CustomPainter {
         if (dist < 0.2) {
           final opacity = (1 - dist / 0.2) * 0.3;
           linePaint.color = Color.lerp(
-            const Color(0xFF6C00FF), const Color(0xFF0066FF), _nodes[i].x)!.withOpacity(opacity);
+            const Color(0xFF6C00FF), const Color(0xFF0066FF), _nodes[i].x)!.withValues(alpha: opacity);
           canvas.drawLine(
             Offset(_nodes[i].x * size.width, _nodes[i].y * size.height),
             Offset(_nodes[j].x * size.width, _nodes[j].y * size.height),
@@ -415,9 +396,9 @@ class _LandingPlexusPainter extends CustomPainter {
     for (final n in _nodes) {
       final pos = Offset(n.x * size.width, n.y * size.height);
       dotPaint.color = Color.lerp(
-        const Color(0xFF6C00FF), const Color(0xFF0066FF), n.x)!.withOpacity(0.6);
+        const Color(0xFF6C00FF), const Color(0xFF0066FF), n.x)!.withValues(alpha: 0.6);
       canvas.drawCircle(pos, 2, dotPaint);
-      dotPaint.color = Colors.white.withOpacity(0.4);
+      dotPaint.color = Colors.white.withValues(alpha: 0.4);
       canvas.drawCircle(pos, 1, dotPaint);
     }
   }
