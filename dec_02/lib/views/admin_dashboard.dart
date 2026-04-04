@@ -2279,16 +2279,6 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
     }
   }
 
-  Future<void> _editStudent(Map<String, dynamic> student) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditStudentPage(student: student),
-      ),
-    );
-    if (result == true) _loadStudents();
-  }
-
   Future<void> _deleteSelected() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -2357,8 +2347,6 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                             setState(() {
                               isSelected ? _selectedIds.remove(id) : _selectedIds.add(id);
                             });
-                          } else {
-                            _editStudent(student);
                           }
                         },
                         onLongPress: () {
@@ -2377,20 +2365,20 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                                 child: const Icon(Icons.check, color: Colors.white, size: 20),
                               )
                             : CircleAvatar(
-                                backgroundColor: const Color(0xFF4F46E5),
+                                backgroundColor: const Color(0xFF10B981),
                                 child: Text(
-                                  student['name']?.isNotEmpty == true ? student['name'][0] : 'S',
-                                  style: const TextStyle(color: Colors.white),
+                                  (student['phone']?.toString() ?? 'S').substring(0, 1),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
                               ),
-                        title: Text(student['phone'] ?? 'No Phone'),
-                        subtitle: Text('DOB: ${student['dob']?.toString().split('T')[0] ?? ''}'),
-                        trailing: isSelected
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
-                                onPressed: () => _editStudent(student),
-                              ),
+                        title: Text(
+                          student['phone'] ?? 'No Phone',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Password: ${student['dob']?.toString().split('T')[0] ?? 'N/A'}',
+                          style: const TextStyle(color: Color(0xFF64748B)),
+                        ),
                       ),
                     );
                   },
