@@ -477,11 +477,10 @@ app.delete('/api/recyclebin/:id', async (req, res) => {
   }
 });
 
-// Update student by MongoDB _id (no duplicates)
+// Update student by MongoDB _id - updates student AND report together
 app.put('/api/students/id/:id', async (req, res) => {
   try {
     let student;
-    // Try by MongoDB _id first
     try {
       student = await Student.findByIdAndUpdate(
         req.params.id,
@@ -489,7 +488,6 @@ app.put('/api/students/id/:id', async (req, res) => {
         { new: true }
       );
     } catch (e) {}
-    // Fallback: try by custom id field
     if (!student) {
       student = await Student.findOneAndUpdate(
         { id: req.params.id },
@@ -498,8 +496,6 @@ app.put('/api/students/id/:id', async (req, res) => {
       );
     }
     if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    // Also update all reports for this student's phone
     await Report.updateMany(
       { phone: student.phone },
       { $set: {
@@ -510,7 +506,6 @@ app.put('/api/students/id/:id', async (req, res) => {
         address: req.body.address ?? student.address,
       }}
     );
-
     res.json(student);
   } catch (err) {
     res.status(500).json({ error: err.message });
