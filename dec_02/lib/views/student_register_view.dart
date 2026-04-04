@@ -149,8 +149,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         (s) {
           final studentPhone = s['phone']?.toString();
           final studentDob = s['dob']?.toString().split('T')[0];
-          
-          // Strict matching with current session
           return studentPhone == _currentLoggedInPhone && 
                  studentDob == _currentLoggedInDob;
         },
@@ -162,8 +160,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         
         setState(() {
           _currentStudentData = Map<String, dynamic>.from(loggedInStudent);
-          
-          // Set all fields with student data
           phoneCtrl.text = loggedInStudent['phone']?.toString() ?? '';
           dobCtrl.text = loggedInStudent['dob']?.toString().split('T')[0] ?? '';
           nameCtrl.text = loggedInStudent['name']?.toString() ?? '';
@@ -172,7 +168,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           parentCtrl.text = loggedInStudent['parentName']?.toString() ?? '';
           addressCtrl.text = loggedInStudent['address']?.toString() ?? '';
           
-          // Find and select the route based on student's location
           if (loggedInStudent['location'] != null && routes.isNotEmpty) {
             final matches = routes.where((r) => r.name == loggedInStudent['location']).toList();
             if (matches.isNotEmpty) {
@@ -186,6 +181,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         });
       } else {
         print('Logged-in student not found in database');
+        // Only show not found if truly not in DB - don't block if name is empty
         _showUserNotFoundDialog();
       }
     } catch (e) {

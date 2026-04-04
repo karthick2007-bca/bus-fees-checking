@@ -75,9 +75,7 @@ class _AppControllerState extends State<AppController> {
             student['name'] != null &&
             student['name'].toString().trim().isNotEmpty;
 
-        bool hasPaid = student['amountPaid'] != null &&
-            student['totalDue'] != null &&
-            student['amountPaid'] >= student['totalDue'];
+        bool hasPaid = student['status'] == 'succeed';
 
         if (hasRegistered && hasPaid) {
           _currentView = AppView.studentReport;
