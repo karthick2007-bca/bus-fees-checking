@@ -47,7 +47,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       final data = await ApiService.getLocations();
       setState(() {
         locations = data.map((loc) => {
-          'id': loc['id'],
+          'id': (loc['_id'] ?? loc['id'])?.toString() ?? '',
           'name': loc['name'],
           'fee': loc['fee'],
         }).toList();
@@ -1884,21 +1884,32 @@ class RecycleBinPage extends StatefulWidget {
   State<RecycleBinPage> createState() => _RecycleBinPageState();
 }
 
-class _RecycleBinPageState extends State<RecycleBinPage> {
-  List<dynamic> _items = [];
+class _RecycleBinPageState extends State<RecycleBinPage>
+    with SingleTickerProviderStateMixin {
+  List<dynamic> _students = [];
+  List<dynamic> _locations = [];
   bool _isLoading = true;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadItems();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadItems() async {
     try {
       final items = await ApiService.getRecycleBin();
       setState(() {
-        _items = items;
+        _students = items.where((i) => i['type'] == 'student').toList();
+        _locations = items.where((i) => i['type'] == 'location').toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -1942,59 +1953,175 @@ class _RecycleBinPageState extends State<RecycleBinPage> {
     }
   }
 
+  Widget _buildCard(dynamic item) {
+    if (item == null) return const SizedBox.shrink();
+    final type = item['type']?.toString() ?? 'unknown';
+    final id = (item['_id'] ?? item['id'])?.toString() ?? '';
+    final isStudent = type == 'student';
+
+    final String title = isStudent
+        ? ((item['name']?.toString().isNotEmpty == true)
+            ? item['name'].toString()
+            : item['phone']?.toString() ?? 'Student')
+        : item['name']?.toString() ?? 'Location';
+
+    final String line1 = isStudent
+        ? 'Phone: ${item['phone'] ?? 'N/A'}'
+        : 'Fee: ₹${item['fee'] ?? 'N/A'}';
+
+    final String line2 = isStudent
+        ? 'DOB: ${item['dob']?.toString().split('T')[0] ?? 'N/A'}'
+        : 'Deleted: ${item['deletedAt']?.toString().split('T')[0] ?? 'N/A'}';
+
+    final String deletedAt = isStudent
+        ? 'Deleted: ${item['deletedAt']?.toString().split('T')[0] ?? ''}'
+        : '';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: isStudent
+                    ? const Color(0xFF4F46E5).withOpacity(0.1)
+                    : const Color(0xFFF59E0B).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isStudent ? Icons.person_rounded : Icons.location_on_rounded,
+                color: isStudent ? const Color(0xFF4F46E5) : const Color(0xFFF59E0B),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Color(0xFF0F172A))),
+                  const SizedBox(height: 2),
+                  Text(line1,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF64748B))),
+                  Text(line2,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF64748B))),
+                  if (isStudent && deletedAt.isNotEmpty)
+                    Text(deletedAt,
+                        style: const TextStyle(
+                            fontSize: 11, color: Color(0xFF94A3B8))),
+                ],
+              ),
+            ),
+            Column(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.restore_rounded,
+                      color: Colors.green, size: 22),
+                  tooltip: 'Restore',
+                  onPressed: id.isEmpty ? null : () => _restore(id),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_forever_rounded,
+                      color: Colors.red, size: 22),
+                  tooltip: 'Delete permanently',
+                  onPressed: id.isEmpty ? null : () => _permanentDelete(id),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState(String message, IconData icon) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 56, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text(message,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w500)),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Recycle Bin'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Recycle Bin',
+            style: TextStyle(
+                fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF4F46E5),
+          unselectedLabelColor: const Color(0xFF94A3B8),
+          indicatorColor: const Color(0xFF4F46E5),
+          indicatorWeight: 3,
+          labelStyle:
+              const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.person_rounded, size: 18),
+              text: 'Students (${_students.length})',
+            ),
+            Tab(
+              icon: const Icon(Icons.location_on_rounded, size: 18),
+              text: 'Locations (${_locations.length})',
+            ),
+          ],
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-              ? const Center(child: Text('Recycle bin is empty'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _items.length,
-                  itemBuilder: (context, index) {
-                    final item = _items[index];
-                    final type = item['type'];
-                    final data = item['data'];
-                    final id = item['_id'];
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: Icon(
-                          type == 'student' ? Icons.person : Icons.location_on,
-                          color: const Color(0xFF4F46E5),
-                        ),
-                        title: Text(
-                          type == 'student'
-                              ? (data['name']?.isNotEmpty == true ? data['name'] : data['phone'] ?? 'Student')
-                              : data['name'] ?? 'Location',
-                        ),
-                        subtitle: Text(
-                          type == 'student'
-                              ? 'Phone: ${data['phone']}'
-                              : 'Fee: ₹${data['fee']}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.restore, color: Colors.green),
-                              onPressed: () => _restore(id),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_forever, color: Colors.red),
-                              onPressed: () => _permanentDelete(id),
-                            ),
-                          ],
-                        ),
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                // Page 1 — Deleted Students
+                _students.isEmpty
+                    ? _emptyState(
+                        'No deleted students', Icons.person_off_rounded)
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _students.length,
+                        itemBuilder: (_, i) => _buildCard(_students[i]),
                       ),
-                    );
-                  },
-                ),
+
+                // Page 2 — Deleted Locations
+                _locations.isEmpty
+                    ? _emptyState('No deleted locations',
+                        Icons.location_off_rounded)
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _locations.length,
+                        itemBuilder: (_, i) => _buildCard(_locations[i]),
+                      ),
+              ],
+            ),
     );
   }
 }
@@ -2316,8 +2443,9 @@ class _EditStudentPageState extends State<EditStudentPage> {
 
   Future<void> _updateStudent() async {
     try {
-      await ApiService.addStudent({
-        ...widget.student,
+      // Use the MongoDB _id to update the exact student - no duplicates
+      final studentId = (widget.student['_id'] ?? widget.student['id'])?.toString() ?? '';
+      await ApiService.updateStudentById(studentId, {
         'name': nameController.text,
         'rollNo': rollNoController.text,
         'studentClass': classController.text,
@@ -2579,7 +2707,10 @@ class _AllLocationsPageState extends State<AllLocationsPage> {
     try {
       final locations = await ApiService.getLocations();
       setState(() {
-        _locations = locations;
+        _locations = locations.map((loc) => {
+          ...loc,
+          'id': (loc['_id'] ?? loc['id'])?.toString() ?? '',
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {

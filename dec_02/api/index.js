@@ -44,10 +44,17 @@ app.put('/api/students/:phone', async (req, res) => {
 app.delete('/api/students/:id', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    const student = await db.collection('students').findOne({ _id: new ObjectId(req.params.id) });
+    // Try finding by MongoDB _id first, then by custom id field
+    let student = null;
+    try {
+      student = await db.collection('students').findOne({ _id: new ObjectId(req.params.id) });
+    } catch (_) {}
+    if (!student) {
+      student = await db.collection('students').findOne({ id: req.params.id });
+    }
     if (student) {
       await db.collection('recyclebin').insertOne({ ...student, type: 'student', deletedAt: new Date().toISOString() });
-      await db.collection('students').deleteOne({ _id: new ObjectId(req.params.id) });
+      await db.collection('students').deleteOne({ _id: student._id });
     }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -83,10 +90,17 @@ app.post('/api/locations', async (req, res) => {
 app.delete('/api/locations/:id', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    const location = await db.collection('locations').findOne({ _id: new ObjectId(req.params.id) });
+    // Try finding by MongoDB _id first, then by custom id field
+    let location = null;
+    try {
+      location = await db.collection('locations').findOne({ _id: new ObjectId(req.params.id) });
+    } catch (_) {}
+    if (!location) {
+      location = await db.collection('locations').findOne({ id: req.params.id });
+    }
     if (location) {
       await db.collection('recyclebin').insertOne({ ...location, type: 'location', deletedAt: new Date().toISOString() });
-      await db.collection('locations').deleteOne({ _id: new ObjectId(req.params.id) });
+      await db.collection('locations').deleteOne({ _id: location._id });
     }
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

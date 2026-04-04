@@ -146,7 +146,7 @@ class _LandingViewState extends State<LandingView>
                           ),
                         ),
 
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 36),
 
                         // Admin Card
                         _RoleCard(
@@ -170,7 +170,7 @@ class _LandingViewState extends State<LandingView>
                           badgeColor: const Color(0xFF818CF8),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 14),
 
                         // Student Card
                         _RoleCard(
@@ -194,7 +194,7 @@ class _LandingViewState extends State<LandingView>
                           badgeColor: Colors.white24,
                         ),
 
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 32),
 
                         // Footer
                         Row(
@@ -299,21 +299,21 @@ class _RoleCard extends StatelessWidget {
             splashColor: Colors.white.withOpacity(0.08),
             highlightColor: Colors.white.withOpacity(0.04),
             child: Padding(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(18),
               child: Row(
                 children: [
                   // Icon container
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(icon, size: 32, color: accentColor),
+                    child: Icon(icon, size: 24, color: accentColor),
                   ),
 
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 14),
 
                   // Text
                   Expanded(
@@ -325,46 +325,46 @@ class _RoleCard extends StatelessWidget {
                             Text(
                               title,
                               style: const TextStyle(
-                                fontSize: 22,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: badgeColor,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
                                 badge,
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 8,
                                   fontWeight: FontWeight.w900,
                                   color: accentColor,
-                                  letterSpacing: 1.5,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           subtitle,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: Colors.white.withOpacity(0.5),
-                            letterSpacing: 1.5,
+                            letterSpacing: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 5),
                         Text(
                           description,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 11,
                             color: Colors.white.withOpacity(0.65),
                             height: 1.4,
                           ),
@@ -373,23 +373,23 @@ class _RoleCard extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
 
                   // Arrow
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     transform: Matrix4.translationValues(hovered ? 4 : 0, 0, 0),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(9),
                       ),
                       child: Icon(
                         Icons.arrow_forward_rounded,
                         color: accentColor,
-                        size: 18,
+                        size: 14,
                       ),
                     ),
                   ),

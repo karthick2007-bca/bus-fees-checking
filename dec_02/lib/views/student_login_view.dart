@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -21,8 +20,7 @@ class StudentLoginView extends StatefulWidget {
   State<StudentLoginView> createState() => _StudentLoginViewState();
 }
 
-class _StudentLoginViewState extends State<StudentLoginView>
-    with SingleTickerProviderStateMixin {
+class _StudentLoginViewState extends State<StudentLoginView> {
   final _userIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -30,18 +28,15 @@ class _StudentLoginViewState extends State<StudentLoginView>
   bool _isCheckingReport = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
     _clearExistingSession();
-    _animController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
     _userIdController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -141,33 +136,38 @@ class _StudentLoginViewState extends State<StudentLoginView>
     return Scaffold(
       body: Stack(
         children: [
-          // Dark gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF050010), Color(0xFF0A0A2E), Color(0xFF001428), Color(0xFF030810)],
-                stops: [0.0, 0.35, 0.7, 1.0],
-              ),
-            ),
-          ),
-          // Plexus animation
+          // Background image
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _animController,
-              builder: (_, __) => CustomPaint(
-                painter: _StudentPlexusPainter(_animController.value),
+            child: Image.network(
+              'https://img.freepik.com/premium-photo/yellow-school-bus-is-driving-down-road-with-mountains-background_1230717-184946.jpg',
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF050010), Color(0xFF0A0A2E), Color(0xFF001428)],
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stack) => Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF050010), Color(0xFF0A0A2E), Color(0xFF001428)],
+                  ),
+                ),
               ),
             ),
           ),
-          // Glow orbs
-          Positioned(top: -120, right: -80,
-            child: _glowOrb(400, const Color(0xFF4F46E5).withOpacity(0.15))),
-          Positioned(bottom: -100, left: -100,
-            child: _glowOrb(350, const Color(0xFF06B6D4).withOpacity(0.12))),
-          Positioned(top: MediaQuery.of(context).size.height * 0.5, left: -50,
-            child: _glowOrb(200, const Color(0xFF8B5CF6).withOpacity(0.1))),
+          // Dark overlay
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(0.55)),
+          ),
           // Card
           Center(
             child: SingleChildScrollView(
@@ -182,14 +182,6 @@ class _StudentLoginViewState extends State<StudentLoginView>
       ),
     );
   }
-
-  Widget _glowOrb(double size, Color color) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: RadialGradient(colors: [color, Colors.transparent]),
-    ),
-  );
 
   Widget _glassCard() {
     final busy = _isLoading || _isCheckingReport;
@@ -286,37 +278,9 @@ class _StudentLoginViewState extends State<StudentLoginView>
                   child: _isLoading
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.dashboard_rounded, color: Colors.white, size: 18),
+                        Icon(Icons.login_rounded, color: Colors.white, size: 18),
                         SizedBox(width: 10),
-                        Text('Open Dashboard', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
-                      ]),
-                ),
-                const SizedBox(height: 10),
-                // Register button
-                SizedBox(
-                  width: double.infinity, height: 48,
-                  child: OutlinedButton(
-                    onPressed: busy ? null : () => _clearExistingSession().then((_) { if (mounted) widget.onRegister(); }),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(color: Colors.white.withOpacity(0.25), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      backgroundColor: Colors.white.withOpacity(0.06),
-                    ),
-                    child: const Text('New Student? Register Here', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Check report button
-                _gradientButton(
-                  onTap: busy ? null : _handleCheckReport,
-                  colors: const [Color(0xFF0891B2), Color(0xFF06B6D4)],
-                  child: _isCheckingReport
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
-                        SizedBox(width: 10),
-                        Text('Check My Report', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                        Text('Login', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
                       ]),
                 ),
               ],
@@ -379,81 +343,4 @@ class _StudentLoginViewState extends State<StudentLoginView>
       ),
     );
   }
-}
-
-class _StudentPlexusPainter extends CustomPainter {
-  final double t;
-  static final _rng = math.Random(99);
-  static late List<_SNode> _nodes;
-  static bool _initialized = false;
-
-  _StudentPlexusPainter(this.t) {
-    if (!_initialized) {
-      _nodes = List.generate(45, (_) => _SNode(
-        x: _rng.nextDouble(), y: _rng.nextDouble(),
-        vx: (_rng.nextDouble() - 0.5) * 0.0012,
-        vy: (_rng.nextDouble() - 0.5) * 0.0012,
-      ));
-      _initialized = true;
-    }
-    for (final n in _nodes) {
-      n.x = (n.x + n.vx) % 1.0;
-      n.y = (n.y + n.vy) % 1.0;
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()..strokeWidth = 0.6..style = PaintingStyle.stroke;
-    final dotPaint = Paint()..style = PaintingStyle.fill;
-    final triPaint = Paint()..strokeWidth = 0.7..style = PaintingStyle.stroke;
-
-    for (int i = 0; i < _nodes.length; i++) {
-      for (int j = i + 1; j < _nodes.length; j++) {
-        final dx = _nodes[i].x - _nodes[j].x;
-        final dy = _nodes[i].y - _nodes[j].y;
-        final dist = math.sqrt(dx * dx + dy * dy);
-        if (dist < 0.2) {
-          final opacity = (1 - dist / 0.2) * 0.35;
-          linePaint.color = Color.lerp(const Color(0xFF4F46E5), const Color(0xFF06B6D4), _nodes[i].y)!.withOpacity(opacity);
-          canvas.drawLine(
-            Offset(_nodes[i].x * size.width, _nodes[i].y * size.height),
-            Offset(_nodes[j].x * size.width, _nodes[j].y * size.height),
-            linePaint,
-          );
-        }
-      }
-    }
-
-    for (int i = 0; i < _nodes.length - 2; i += 3) {
-      final a = Offset(_nodes[i].x * size.width, _nodes[i].y * size.height);
-      final b = Offset(_nodes[i + 1].x * size.width, _nodes[i + 1].y * size.height);
-      final c = Offset(_nodes[i + 2].x * size.width, _nodes[i + 2].y * size.height);
-      if ((a - b).distance < size.width * 0.22) {
-        triPaint.color = const Color(0xFF4F46E5).withOpacity(0.07);
-        triPaint.style = PaintingStyle.fill;
-        final path = Path()..moveTo(a.dx, a.dy)..lineTo(b.dx, b.dy)..lineTo(c.dx, c.dy)..close();
-        canvas.drawPath(path, triPaint);
-        triPaint.color = const Color(0xFF06B6D4).withOpacity(0.12);
-        triPaint.style = PaintingStyle.stroke;
-        canvas.drawPath(path, triPaint);
-      }
-    }
-
-    for (final n in _nodes) {
-      final pos = Offset(n.x * size.width, n.y * size.height);
-      dotPaint.color = Color.lerp(const Color(0xFF4F46E5), const Color(0xFF06B6D4), n.y)!.withOpacity(0.65);
-      canvas.drawCircle(pos, 2.5, dotPaint);
-      dotPaint.color = Colors.white.withOpacity(0.45);
-      canvas.drawCircle(pos, 1.2, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_StudentPlexusPainter old) => old.t != t;
-}
-
-class _SNode {
-  double x, y, vx, vy;
-  _SNode({required this.x, required this.y, required this.vx, required this.vy});
 }

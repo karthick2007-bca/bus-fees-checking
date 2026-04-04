@@ -477,6 +477,21 @@ app.delete('/api/recyclebin/:id', async (req, res) => {
   }
 });
 
+// Update student by MongoDB _id (no duplicates)
+app.put('/api/students/id/:id', async (req, res) => {
+  try {
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update student by phone
 app.put('/api/students/:phone', async (req, res) => {
   try {

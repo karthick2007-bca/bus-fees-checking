@@ -214,6 +214,15 @@ class _StudentReportState extends State<StudentReport> {
                               Center(
                                 child: Column(
                                   children: [
+                                    // School logo
+                                    Image.network(
+                                      'https://www.lingaschool.org/img/linga.png',
+                                      height: 150,
+                                      width: double.infinity,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                    ),
+                                    const SizedBox(height: 12),
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
