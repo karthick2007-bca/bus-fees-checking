@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class LandingView extends StatefulWidget {
@@ -15,23 +14,16 @@ class LandingView extends StatefulWidget {
   State<LandingView> createState() => _LandingViewState();
 }
 
-class _LandingViewState extends State<LandingView>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _LandingViewState extends State<LandingView> {
   int? _hoveredCard;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 8),
-    )..repeat();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     super.dispose();
   }
 
@@ -40,39 +32,37 @@ class _LandingViewState extends State<LandingView>
     return Scaffold(
       body: Stack(
         children: [
-          // Dark gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF050010),
-                  Color(0xFF0A0A2E),
-                  Color(0xFF001428),
-                  Color(0xFF030810),
-                ],
-                stops: [0.0, 0.35, 0.7, 1.0],
-              ),
-            ),
-          ),
-          // Animated plexus
+          // Original background image
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (_, __) => CustomPaint(
-                painter: _LandingPlexusPainter(_controller.value),
+            child: Image.network(
+              'https://5.imimg.com/data5/SELLER/Default/2021/2/IC/ZO/OY/3332884/led-sign-board-1000x1000.jpg',
+              headers: const {'User-Agent': 'Mozilla/5.0'},
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) => Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4338CA)],
+                  ),
+                ),
               ),
             ),
           ),
-          // Glow orbs
-          Positioned(
-            top: -100, left: -80,
-            child: _glowOrb(350, const Color(0xFF6C00FF).withValues(alpha: 0.12)),
-          ),
-          Positioned(
-            bottom: -80, right: -80,
-            child: _glowOrb(300, const Color(0xFF0066FF).withValues(alpha: 0.1)),
+          // Dark overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.65),
+                    Colors.black.withValues(alpha: 0.75),
+                  ],
+                ),
+              ),
+            ),
           ),
           // Content
           Center(
@@ -197,15 +187,6 @@ class _LandingViewState extends State<LandingView>
       ),
     );
   }
-
-  Widget _glowOrb(double size, Color color) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, Colors.transparent]),
-        ),
-      );
 
   Widget _dot() => Container(
         width: 5,
@@ -349,65 +330,3 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-class _LandingPlexusPainter extends CustomPainter {
-  final double t;
-  static final _rng = math.Random(77);
-  static late List<_LNode> _nodes;
-  static bool _initialized = false;
-
-  _LandingPlexusPainter(this.t) {
-    if (!_initialized) {
-      _nodes = List.generate(35, (_) => _LNode(
-        x: _rng.nextDouble(), y: _rng.nextDouble(),
-        vx: (_rng.nextDouble() - 0.5) * 0.001,
-        vy: (_rng.nextDouble() - 0.5) * 0.001,
-      ));
-      _initialized = true;
-    }
-    for (final n in _nodes) {
-      n.x = (n.x + n.vx) % 1.0;
-      n.y = (n.y + n.vy) % 1.0;
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()..strokeWidth = 0.5..style = PaintingStyle.stroke;
-    final dotPaint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < _nodes.length; i++) {
-      for (int j = i + 1; j < _nodes.length; j++) {
-        final dx = _nodes[i].x - _nodes[j].x;
-        final dy = _nodes[i].y - _nodes[j].y;
-        final dist = math.sqrt(dx * dx + dy * dy);
-        if (dist < 0.2) {
-          final opacity = (1 - dist / 0.2) * 0.3;
-          linePaint.color = Color.lerp(
-            const Color(0xFF6C00FF), const Color(0xFF0066FF), _nodes[i].x)!.withValues(alpha: opacity);
-          canvas.drawLine(
-            Offset(_nodes[i].x * size.width, _nodes[i].y * size.height),
-            Offset(_nodes[j].x * size.width, _nodes[j].y * size.height),
-            linePaint,
-          );
-        }
-      }
-    }
-
-    for (final n in _nodes) {
-      final pos = Offset(n.x * size.width, n.y * size.height);
-      dotPaint.color = Color.lerp(
-        const Color(0xFF6C00FF), const Color(0xFF0066FF), n.x)!.withValues(alpha: 0.6);
-      canvas.drawCircle(pos, 2, dotPaint);
-      dotPaint.color = Colors.white.withValues(alpha: 0.4);
-      canvas.drawCircle(pos, 1, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LandingPlexusPainter old) => old.t != t;
-}
-
-class _LNode {
-  double x, y, vx, vy;
-  _LNode({required this.x, required this.y, required this.vx, required this.vy});
-}
