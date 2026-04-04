@@ -196,7 +196,31 @@ class _StudentReportState extends State<StudentReport> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : studentData == null
-              ? const Center(child: Text('No data found'))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('No report found',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      const Text('You have not made any payment yet.',
+                          style: TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (widget.onLogout != null) widget.onLogout!();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Go Back'),
+                      ),
+                    ],
+                  ),
+                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Center(

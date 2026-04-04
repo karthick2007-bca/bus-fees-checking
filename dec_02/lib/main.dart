@@ -91,8 +91,8 @@ class _AppControllerState extends State<AppController> {
   // Fetch latest report for student from reports collection
   Future<void> _checkMyReport(String phone, String dob) async {
     try {
+      // First try reports collection
       final reports = await ApiService.getReports();
-
       final studentReports = reports.where((r) {
         final rPhone = r['phone']?.toString();
         final rDob = r['dob']?.toString().split('T')[0];
@@ -100,13 +100,26 @@ class _AppControllerState extends State<AppController> {
       }).toList();
 
       Map<String, dynamic>? reportData;
+
       if (studentReports.isNotEmpty) {
+        // Sort by latest
         studentReports.sort((a, b) {
           final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
           final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
           return bDate.compareTo(aDate);
         });
         reportData = Map<String, dynamic>.from(studentReports.first);
+      } else {
+        // Fallback: get from students collection
+        final students = await ApiService.getStudents();
+        final student = students.firstWhere(
+          (s) => s['phone']?.toString() == phone &&
+              s['dob']?.toString().split('T')[0] == dob,
+          orElse: () => {},
+        );
+        if (student.isNotEmpty) {
+          reportData = Map<String, dynamic>.from(student);
+        }
       }
 
       setState(() {

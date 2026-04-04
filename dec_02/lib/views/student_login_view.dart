@@ -271,7 +271,7 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                // Dashboard button
+                // Login button
                 _gradientButton(
                   onTap: busy ? null : _handleLogin,
                   colors: const [Color(0xFF4F46E5), Color(0xFF7C3AED)],
@@ -281,6 +281,19 @@ class _StudentLoginViewState extends State<StudentLoginView> {
                         Icon(Icons.login_rounded, color: Colors.white, size: 18),
                         SizedBox(width: 10),
                         Text('Login', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                      ]),
+                ),
+                const SizedBox(height: 10),
+                // Check My Report button
+                _gradientButton(
+                  onTap: busy ? null : _handleCheckReport,
+                  colors: const [Color(0xFF0891B2), Color(0xFF06B6D4)],
+                  child: _isCheckingReport
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 10),
+                        Text('Check My Report', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
                       ]),
                 ),
               ],
