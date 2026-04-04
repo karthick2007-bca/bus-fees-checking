@@ -2432,32 +2432,28 @@ class _EditStudentPageState extends State<EditStudentPage> {
   Future<void> _updateStudent() async {
     try {
       final studentId = (widget.student['_id'] ?? widget.student['id'])?.toString() ?? '';
-      final phone = widget.student['phone']?.toString() ?? '';
 
-      // Update student record by MongoDB _id - no duplicates
+      if (studentId.isEmpty) {
+        throw Exception('Student ID not found');
+      }
+
+      // Single API call - backend updates both student AND report
       await ApiService.updateStudentById(studentId, {
-        'name': nameController.text,
-        'rollNo': rollNoController.text,
-        'studentClass': classController.text,
-        'parentName': parentNameController.text,
-        'phone': phoneController.text,
-        'email': emailController.text,
-        'address': addressController.text,
-      });
-
-      // Also update the latest report so student report reflects changes
-      await ApiService.updateReportByPhone(phone, {
-        'name': nameController.text,
-        'rollNo': rollNoController.text,
-        'studentClass': classController.text,
-        'parentName': parentNameController.text,
-        'address': addressController.text,
-        'phone': phoneController.text,
+        'name': nameController.text.trim(),
+        'rollNo': rollNoController.text.trim(),
+        'studentClass': classController.text.trim(),
+        'parentName': parentNameController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'email': emailController.text.trim(),
+        'address': addressController.text.trim(),
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Student updated successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Student & Report updated successfully! ✅'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, true);
       }

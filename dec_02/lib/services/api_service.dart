@@ -39,8 +39,11 @@ class ApiService {
   }
 
   static Future<void> updateStudentById(String id, Map<String, dynamic> data) async {
-    await http.put(Uri.parse('$baseUrl/api/students/id/$id'),
+    final response = await http.put(Uri.parse('$baseUrl/api/students/id/$id'),
         headers: _headers, body: jsonEncode(data)).timeout(timeout);
+    if (response.statusCode != 200) {
+      throw Exception('Update failed: ${response.body}');
+    }
   }
 
   static Future<void> updateReportByPhone(String phone, Map<String, dynamic> data) async {
