@@ -533,6 +533,19 @@ app.post('/api/reports', async (req, res) => {
   }
 });
 
+// Update report by phone (sync when admin edits student)
+app.put('/api/reports/phone/:phone', async (req, res) => {
+  try {
+    await Report.updateMany(
+      { phone: req.params.phone },
+      { $set: req.body }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all reports
 app.get('/api/reports', async (req, res) => {
   try {

@@ -2431,8 +2431,10 @@ class _EditStudentPageState extends State<EditStudentPage> {
 
   Future<void> _updateStudent() async {
     try {
-      // Use the MongoDB _id to update the exact student - no duplicates
       final studentId = (widget.student['_id'] ?? widget.student['id'])?.toString() ?? '';
+      final phone = widget.student['phone']?.toString() ?? '';
+
+      // Update student record by MongoDB _id - no duplicates
       await ApiService.updateStudentById(studentId, {
         'name': nameController.text,
         'rollNo': rollNoController.text,
@@ -2442,6 +2444,17 @@ class _EditStudentPageState extends State<EditStudentPage> {
         'email': emailController.text,
         'address': addressController.text,
       });
+
+      // Also update the latest report so student report reflects changes
+      await ApiService.updateReportByPhone(phone, {
+        'name': nameController.text,
+        'rollNo': rollNoController.text,
+        'studentClass': classController.text,
+        'parentName': parentNameController.text,
+        'address': addressController.text,
+        'phone': phoneController.text,
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Student updated successfully!'), backgroundColor: Colors.green),
@@ -2601,6 +2614,18 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
           ],
         ),
         isThreeLine: true,
+        trailing: IconButton(
+          icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditStudentPage(student: student),
+              ),
+            );
+            if (result == true) _loadStudents();
+          },
+        ),
       ),
     );
   }

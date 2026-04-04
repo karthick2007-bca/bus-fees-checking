@@ -43,6 +43,11 @@ class ApiService {
         headers: _headers, body: jsonEncode(data)).timeout(timeout);
   }
 
+  static Future<void> updateReportByPhone(String phone, Map<String, dynamic> data) async {
+    await http.put(Uri.parse('$baseUrl/api/reports/phone/$phone'),
+        headers: _headers, body: jsonEncode(data)).timeout(timeout);
+  }
+
   static Future<void> deleteStudent(String id) async {
     await http.delete(Uri.parse('$baseUrl/api/students/$id')).timeout(timeout);
   }
