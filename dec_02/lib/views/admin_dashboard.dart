@@ -922,6 +922,7 @@ class AdminRolePage extends StatefulWidget {
 class _AdminRolePageState extends State<AdminRolePage> {
   bool _isLoading = true;
   Map<String, double> _locationData = {};
+  Map<String, int> _locationCountData = {};
   Map<String, double> _yearData = {};
   int _totalStudents = 0;
   int _paidStudents = 0;
@@ -937,21 +938,26 @@ class _AdminRolePageState extends State<AdminRolePage> {
     try {
       final students = await ApiService.getStudents();
       final Map<String, double> locationMap = {};
+      final Map<String, int> locationCountMap = {};
       final Map<String, double> yearMap = {};
       double total = 0;
       int paid = 0;
 
       for (var s in students) {
         final amount = (s['amountPaid'] as num?)?.toDouble() ?? 0;
+        final loc = s['location']?.toString() ?? 'Unknown';
+
+        // Count ALL students per location (paid and unpaid)
+        if (loc.isNotEmpty && loc != 'Unknown') {
+          locationCountMap[loc] = (locationCountMap[loc] ?? 0) + 1;
+        }
+
         if (amount <= 0) continue;
         paid++;
         total += amount;
 
-        // Location
-        final loc = s['location']?.toString() ?? 'Unknown';
         locationMap[loc] = (locationMap[loc] ?? 0) + amount;
 
-        // Year
         final dateStr = s['paymentDate'] ?? s['lastUpdated'] ?? s['registrationDate'];
         if (dateStr != null) {
           try {
@@ -963,6 +969,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
 
       setState(() {
         _locationData = locationMap;
+        _locationCountData = locationCountMap;
         _yearData = yearMap;
         _totalStudents = students.length;
         _paidStudents = paid;
@@ -1021,7 +1028,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
                           ))
                         : SizedBox(
                             height: 220,
-                            child: _LocationBarChart(data: _locationData, formatAmount: _formatAmount),
+                            child: _LocationBarChart(data: _locationData, countData: _locationCountData, formatAmount: _formatAmount),
                           ),
                   ),
                   const SizedBox(height: 20),
@@ -1114,9 +1121,10 @@ class _AdminRolePageState extends State<AdminRolePage> {
 
 class _LocationBarChart extends StatelessWidget {
   final Map<String, double> data;
+  final Map<String, int> countData;
   final String Function(double) formatAmount;
 
-  const _LocationBarChart({required this.data, required this.formatAmount});
+  const _LocationBarChart({required this.data, required this.countData, required this.formatAmount});
 
   @override
   Widget build(BuildContext context) {
@@ -1134,12 +1142,33 @@ class _LocationBarChart extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: List.generate(entries.length, (i) {
               final ratio = entries[i].value / maxVal;
+              final location = entries[i].key;
+              final count = countData[location] ?? 0;
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // Total students count on top
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colors[i % colors.length].withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$count students',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: colors[i % colors.length],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // Fee amount
                       Text(
                         formatAmount(entries[i].value),
                         style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
@@ -1191,7 +1220,7 @@ class _YearLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allYears = ['2021', '2022', '2023', '2024', '2025'];
+    final allYears = ['2026', '2027', '2028', '2029', '2030'];
     final values = allYears.map((y) => data[y] ?? 0).toList();
     final maxVal = values.reduce((a, b) => a > b ? a : b);
     final safeMax = maxVal == 0 ? 1.0 : maxVal;
