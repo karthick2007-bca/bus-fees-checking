@@ -924,6 +924,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
   Map<String, double> _locationData = {};
   Map<String, int> _locationCountData = {};
   Map<String, double> _yearData = {};
+  Map<String, int> _yearCountData = {};
   int _totalStudents = 0;
   int _paidStudents = 0;
   double _totalCollection = 0;
@@ -940,6 +941,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
       final Map<String, double> locationMap = {};
       final Map<String, int> locationCountMap = {};
       final Map<String, double> yearMap = {};
+      final Map<String, int> yearCountMap = {};
       double total = 0;
       int paid = 0;
 
@@ -947,9 +949,17 @@ class _AdminRolePageState extends State<AdminRolePage> {
         final amount = (s['amountPaid'] as num?)?.toDouble() ?? 0;
         final loc = s['location']?.toString() ?? 'Unknown';
 
-        // Count ALL students per location (paid and unpaid)
         if (loc.isNotEmpty && loc != 'Unknown') {
           locationCountMap[loc] = (locationCountMap[loc] ?? 0) + 1;
+        }
+
+        // Count all students per year
+        final dateStr = s['lastUpdated'] ?? s['registrationDate'];
+        if (dateStr != null) {
+          try {
+            final year = DateTime.parse(dateStr).year.toString();
+            yearCountMap[year] = (yearCountMap[year] ?? 0) + 1;
+          } catch (_) {}
         }
 
         if (amount <= 0) continue;
@@ -958,7 +968,6 @@ class _AdminRolePageState extends State<AdminRolePage> {
 
         locationMap[loc] = (locationMap[loc] ?? 0) + amount;
 
-        final dateStr = s['paymentDate'] ?? s['lastUpdated'] ?? s['registrationDate'];
         if (dateStr != null) {
           try {
             final year = DateTime.parse(dateStr).year.toString();
@@ -971,6 +980,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
         _locationData = locationMap;
         _locationCountData = locationCountMap;
         _yearData = yearMap;
+        _yearCountData = yearCountMap;
         _totalStudents = students.length;
         _paidStudents = paid;
         _totalCollection = total;
@@ -1045,7 +1055,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
                           ))
                         : SizedBox(
                             height: 220,
-                            child: _YearLineChart(data: _yearData, formatAmount: _formatAmount),
+                            child: _YearLineChart(data: _yearData, countData: _yearCountData, formatAmount: _formatAmount),
                           ),
                   ),
                   const SizedBox(height: 20),
@@ -1214,14 +1224,16 @@ class _LocationBarChart extends StatelessWidget {
 
 class _YearLineChart extends StatelessWidget {
   final Map<String, double> data;
+  final Map<String, int> countData;
   final String Function(double) formatAmount;
 
-  const _YearLineChart({required this.data, required this.formatAmount});
+  const _YearLineChart({required this.data, required this.countData, required this.formatAmount});
 
   @override
   Widget build(BuildContext context) {
     final allYears = ['2026', '2027', '2028', '2029', '2030'];
     final values = allYears.map((y) => data[y] ?? 0).toList();
+    final counts = allYears.map((y) => countData[y] ?? 0).toList();
     final maxVal = values.reduce((a, b) => a > b ? a : b);
     final safeMax = maxVal == 0 ? 1.0 : maxVal;
 
@@ -1239,10 +1251,28 @@ class _YearLineChart extends StatelessWidget {
           children: List.generate(allYears.length, (i) {
             return Column(
               children: [
-                Text(
-                  values[i] > 0 ? formatAmount(values[i]) : '',
-                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
-                ),
+                // Total students count
+                if (counts[i] > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4F46E5).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${counts[i]} students',
+                      style: const TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4F46E5),
+                      ),
+                    ),
+                  ),
+                if (values[i] > 0)
+                  Text(
+                    formatAmount(values[i]),
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5)),
+                  ),
                 Text(allYears[i], style: const TextStyle(fontSize: 10, color: Colors.grey)),
               ],
             );
