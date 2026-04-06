@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' hide Border;
@@ -25,6 +26,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<Map<String, dynamic>> filteredLocations = [];
   int totalStudents = 0;
   int paidStudents = 0;
+  int _unreadCount = 0;
   final TextEditingController searchController = TextEditingController();
   String? _longPressedLocationId;
   bool _notificationShown = false;
@@ -34,6 +36,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     super.initState();
     _loadLocations();
     _loadStudentCount();
+    _loadUnreadCount();
   }
 
   @override
@@ -68,6 +71,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       print('Error loading students: $e');
     }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final notifications = await ApiService.getNotifications();
+      setState(() {
+        _unreadCount = notifications.where((n) => n['read'] != true).length;
+      });
+    } catch (_) {}
   }
 
   void _filterLocations(String query) {
@@ -115,6 +127,115 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  Widget _glowOrb(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(colors: [color, color.withOpacity(0)]),
+    ),
+  );
+
+  Widget _sectionHeading(String title, {IconData? icon, Widget? trailing}) {
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6C63FF), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: const Color(0xFF6C63FF).withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))],
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: Text(title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
+  }
+
+  Widget _glassContainer({required Widget child, EdgeInsets? padding, double radius = 16}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: Colors.white.withOpacity(0.13), width: 1),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 20, offset: const Offset(0, 6))],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _glassStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required List<Color> gradient,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            width: 130,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [gradient.first.withOpacity(0.55), gradient.last.withOpacity(0.35)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+              boxShadow: [BoxShadow(color: gradient.first.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 18),
+                ),
+                const SizedBox(height: 12),
+                Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
+                const SizedBox(height: 4),
+                Text(label, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 0.3)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _deleteLocation(String id, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -153,486 +274,607 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  Widget _appBarBtn({required IconData icon, required Color color, required Color bg, required Color border, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: border, width: 1)),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+
+  Widget _glassSubheading(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          width: 30, height: 30,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF6C00FF), Color(0xFF0066FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, color: Colors.white, size: 15),
+        ),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+      ],
+    );
+  }
+
+  Widget _menuTile({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.3), width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sw = MediaQuery.of(context).size.width;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        actions: [
-          if (_longPressedLocationId != null)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              tooltip: 'Delete location',
-              onPressed: () async {
-                final loc = locations.firstWhere((l) => l['id'] == _longPressedLocationId);
-                await _deleteLocation(loc['id'], loc['name']);
-                setState(() => _longPressedLocationId = null);
-              },
-            ),
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NotificationsPage()),
-              );
-            },
-          ),
-          IconButton(
-            onPressed: widget.onLogout,
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: _WaveBackground()),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      isMenuExpanded = !isMenuExpanded;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF4F46E5), width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isMenuExpanded ? Icons.keyboard_double_arrow_down : Icons.keyboard_double_arrow_right,
-                      color: const Color(0xFF4F46E5),
-                      size: 24,
-                    ),
-                  ),
+      backgroundColor: const Color(0xFF060818),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                border: Border(
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
                 ),
-                const SizedBox(height: 24),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      // Logo
                       Container(
-                        width: 140,
-                        padding: const EdgeInsets.all(12),
+                        width: 38, height: 38,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AllLocationsPage(),
-                              ),
-                            );
-                          },
-                          child: Column(
-                            children: [
-                              const Icon(Icons.location_on, color: Colors.white, size: 24),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${locations.length}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const Text(
-                                'Total Locations',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6C00FF), Color(0xFF0066FF)],
+                            begin: Alignment.topLeft, end: Alignment.bottomRight,
                           ),
+                          boxShadow: [BoxShadow(color: const Color(0xFF6C00FF).withOpacity(0.5), blurRadius: 14, offset: const Offset(0, 4))],
                         ),
+                        child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      Container(
-                        width: 140,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AllStudentsPage(),
-                              ),
-                            );
-                          },
-                          child: Column(
-                            children: [
-                              const Icon(Icons.people, color: Colors.white, size: 24),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$totalStudents',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const Text(
-                                'Total Students',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      const Expanded(
+                        child: Text('Admin Dashboard',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 140,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const PaidUnpaidStudentsPage(),
-                              ),
-                            );
+                      // Delete action
+                      if (_longPressedLocationId != null)
+                        _appBarBtn(
+                          icon: Icons.delete_rounded,
+                          color: Colors.redAccent,
+                          bg: Colors.red.withOpacity(0.18),
+                          border: Colors.red.withOpacity(0.4),
+                          onTap: () async {
+                            final loc = locations.firstWhere((l) => l['id'] == _longPressedLocationId);
+                            await _deleteLocation(loc['id'], loc['name']);
+                            setState(() => _longPressedLocationId = null);
                           },
-                          child: Column(
-                            children: [
-                              const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$paidStudents',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const Text(
-                                'Paid Students',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
+                      const SizedBox(width: 8),
+                      // Notifications
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          _appBarBtn(
+                            icon: Icons.receipt_long_rounded,
+                            color: Colors.white,
+                            bg: Colors.white.withOpacity(0.08),
+                            border: Colors.white.withOpacity(0.14),
+                            onTap: () async {
+                              await Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+                              _loadUnreadCount();
+                            },
+                          ),
+                          if (_unreadCount > 0)
+                            Positioned(
+                              right: 2, top: 2,
+                              child: Container(
+                                width: 16, height: 16,
+                                decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                child: Center(
+                                  child: Text('$_unreadCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      // Logout
+                      _appBarBtn(
+                        icon: Icons.logout_rounded,
+                        color: Colors.white70,
+                        bg: Colors.white.withOpacity(0.08),
+                        border: Colors.white.withOpacity(0.14),
+                        onTap: widget.onLogout,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Locations',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: searchController,
-                  onChanged: _filterLocations,
-                  decoration: InputDecoration(
-                    hintText: 'Search locations...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: filteredLocations.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Location not found',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                    itemCount: filteredLocations.length,
-                    itemBuilder: (context, index) {
-                      final location = filteredLocations[index];
-                      final isLongPressed = _longPressedLocationId == location['id'];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: isLongPressed ? const Color(0xFFEEF2FF) : null,
-                        child: ListTile(
-                          onTap: () {
-                            if (_longPressedLocationId != null) {
-                              setState(() => _longPressedLocationId = null);
-                              return;
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LocationStudentsPage(
-                                  locationName: location['name'],
-                                ),
-                              ),
-                            );
-                          },
-                          onLongPress: () {
-                            setState(() {
-                              _longPressedLocationId = isLongPressed ? null : location['id'];
-                            });
-                          },
-                          leading: isLongPressed
-                              ? Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF4F46E5),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Icon(Icons.check, color: Colors.white, size: 16),
-                                )
-                              : const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
-                          title: Text(
-                            location['name'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text('Fee: ₹${location['fee']}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit, color: Color(0xFF4F46E5), size: 20),
-                            onPressed: () async {
-                              setState(() => _longPressedLocationId = null);
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditLocationPage(
-                                    locationId: location['id'],
-                                    locationName: location['name'],
-                                    currentFee: (location['fee'] as num).toDouble(),
-                                  ),
-                                ),
-                              );
-                              if (result == true) _loadLocations();
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          if (isMenuExpanded)
-            Positioned(
-              top: 80,
-              left: 24,
-              right: MediaQuery.of(context).size.width * 0.3,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFF4F46E5), width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color.fromARGB(255, 234, 234, 236).withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+        ),
+      ),
+      body: Stack(
+        children: [
+          // ── Rich deep navy background ──
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF060818), Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          // Ambient glow orbs
+          Positioned(top: -120, left: -120,
+            child: _glowOrb(380, const Color(0xFF6C00FF).withOpacity(0.18))),
+          Positioned(bottom: -100, right: -100,
+            child: _glowOrb(320, const Color(0xFF0066FF).withOpacity(0.14))),
+          Positioned(top: 180, right: -80,
+            child: _glowOrb(220, const Color(0xFF00CCFF).withOpacity(0.09))),
+          Positioned(top: 350, left: -60,
+            child: _glowOrb(180, const Color(0xFF10B981).withOpacity(0.07))),
+
+          // ── Main scrollable content ──
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(sw * 0.05, 20, sw * 0.05, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  // ── MENU TOGGLE ──
+                  GestureDetector(
+                    onTap: () => setState(() => isMenuExpanded = !isMenuExpanded),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withOpacity(0.14), width: 1),
+                            boxShadow: [BoxShadow(color: const Color(0xFF6C00FF).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 4))],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 28, height: 28,
+                                decoration: BoxDecoration(
+                                  color: isMenuExpanded
+                                      ? Colors.redAccent.withOpacity(0.2)
+                                      : const Color(0xFF6C00FF).withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  isMenuExpanded ? Icons.close_rounded : Icons.grid_view_rounded,
+                                  color: isMenuExpanded ? Colors.redAccent : const Color(0xFF00CCFF),
+                                  size: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                isMenuExpanded ? 'Close Menu' : 'Quick Menu',
+                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                isMenuExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white.withOpacity(0.4), size: 18,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ── MENU PANEL ──
+                  if (isMenuExpanded) ...[
+                    const SizedBox(height: 14),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))],
+                          ),
+                          child: Column(
+                            children: [
+                              // Row 1
+                              Row(
+                                children: [
+                                  _menuTile(icon: Icons.add_location_alt_rounded, label: 'Add Location', color: const Color(0xFF6C00FF),
+                                    onTap: () async {
+                                      setState(() => isMenuExpanded = false);
+                                      final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddLocationPage()));
+                                      if (result != null) _addLocation(result['name'], result['fee']);
+                                    }),
+                                  const SizedBox(width: 10),
+                                  _menuTile(icon: Icons.analytics_rounded, label: 'Admin Role', color: const Color(0xFF0EA5E9),
+                                    onTap: () {
+                                      setState(() => isMenuExpanded = false);
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminRolePage()));
+                                    }),
+                                  const SizedBox(width: 10),
+                                  _menuTile(icon: Icons.person_add_rounded, label: 'Student Entry', color: const Color(0xFF10B981),
+                                    onTap: () {
+                                      setState(() => isMenuExpanded = false);
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadStudentDataPage()));
+                                    }),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              // Row 2
+                              Row(
+                                children: [
+                                  _menuTile(icon: Icons.delete_sweep_rounded, label: 'Recycle Bin', color: const Color(0xFFF59E0B),
+                                    onTap: () {
+                                      setState(() => isMenuExpanded = false);
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const RecycleBinPage()));
+                                    }),
+                                  const SizedBox(width: 10),
+                                  _menuTile(icon: Icons.settings_rounded, label: 'Settings', color: const Color(0xFF8B5CF6),
+                                    onTap: () {
+                                      setState(() => isMenuExpanded = false);
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
+                                    }),
+                                  const SizedBox(width: 10),
+                                  _menuTile(icon: Icons.feedback_rounded, label: 'Feedback', color: const Color(0xFF10B981),
+                                    onTap: () {
+                                      setState(() => isMenuExpanded = false);
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedbackPage()));
+                                    }),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: () async {
-                        setState(() => isMenuExpanded = false);
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddLocationPage(),
-                          ),
-                        );
-                        if (result != null) {
-                          _addLocation(result['name'], result['fee']);
-                        }
-                      },
+
+                  const SizedBox(height: 24),
+
+                  // ── STATS SUBHEADING ──
+                  _glassSubheading('Overview', Icons.bar_chart_rounded),
+                  const SizedBox(height: 12),
+
+                  // ── STAT CARDS ──
+                  Row(
+                    children: [
+                      Expanded(child: _glassStatCard(
+                        icon: Icons.location_on_rounded,
+                        label: 'Locations',
+                        value: '${locations.length}',
+                        gradient: const [Color(0xFF6C00FF), Color(0xFF0066FF)],
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AllLocationsPage())),
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _glassStatCard(
+                        icon: Icons.people_rounded,
+                        label: 'Students',
+                        value: '$totalStudents',
+                        gradient: const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AllStudentsPage())),
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _glassStatCard(
+                        icon: Icons.check_circle_rounded,
+                        label: 'Paid',
+                        value: '$paidStudents',
+                        gradient: const [Color(0xFF10B981), Color(0xFF059669)],
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaidUnpaidStudentsPage())),
+                      )),
+                    ],
+                  ),
+
+                  const SizedBox(height: 26),
+
+                  // ── BUS LOCATIONS SUBHEADING ──
+                  _glassSubheading('Bus Locations', Icons.directions_bus_rounded),
+                  const SizedBox(height: 12),
+
+                  // ── SEARCH BAR ──
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.13), width: 1),
                         ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.add_location, color: Color(0xFF4F46E5), size: 32),
-                            SizedBox(width: 16),
-                            Text(
-                              'Add Location',
-                              style: TextStyle(
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        child: TextField(
+                          controller: searchController,
+                          onChanged: _filterLocations,
+                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            hintText: 'Search locations...',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(10),
+                              width: 34, height: 34,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6C00FF).withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(10),
                               ),
+                              child: const Icon(Icons.search_rounded, color: Color(0xFF00CCFF), size: 18),
                             ),
-                          ],
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: () {
-                        setState(() => isMenuExpanded = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AdminRolePage(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.admin_panel_settings, color: Color(0xFF4F46E5), size: 32),
-                            SizedBox(width: 16),
-                            Text(
-                              'Admin Role',
-                              style: TextStyle(
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── LOCATION COUNT BADGE ──
+                  if (filteredLocations.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6C00FF).withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF6C00FF).withOpacity(0.35)),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: () {
-                        setState(() => isMenuExpanded = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UploadStudentDataPage(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.person_add, color: Color(0xFF4F46E5), size: 32),
-                            SizedBox(width: 16),
-                            Text(
-                              'Student Entry',
-                              style: TextStyle(
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                            child: Text(
+                              '${filteredLocations.length} location${filteredLocations.length == 1 ? '' : 's'}',
+                              style: const TextStyle(color: Color(0xFFB794F4), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.3),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Long press to select & delete',
+                            style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 11)),
+                        ],
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: () {
-                        setState(() => isMenuExpanded = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RecycleBinPage(),
+                if (filteredLocations.isEmpty)
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64, height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.07),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.12)),
                           ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          child: Icon(Icons.location_off_rounded, color: Colors.white.withOpacity(0.3), size: 30),
                         ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.delete, color: Color(0xFF4F46E5), size: 32),
-                            SizedBox(width: 16),
-                            Text(
-                              'Recycle Bin',
-                              style: TextStyle(
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                        const SizedBox(height: 14),
+                        Text('No locations found',
+                          style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.35), fontWeight: FontWeight.w500)),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: () {
-                        setState(() => isMenuExpanded = false);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsPage(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.settings, color: Color(0xFF4F46E5), size: 32),
-                            SizedBox(width: 16),
-                            Text(
-                              'Settings',
-                              style: TextStyle(
-                                color: Color(0xFF4F46E5),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                  )
+                else
+                  ...List.generate(filteredLocations.length, (index) {
+                            final location = filteredLocations[index];
+                            final isLongPressed = _longPressedLocationId == location['id'];
+                            // Cycle through accent colors per card
+                            final List<List<Color>> cardGradients = [
+                              [const Color(0xFF6C00FF), const Color(0xFF0066FF)],
+                              [const Color(0xFF0EA5E9), const Color(0xFF0284C7)],
+                              [const Color(0xFF10B981), const Color(0xFF059669)],
+                              [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                              [const Color(0xFFEC4899), const Color(0xFFDB2777)],
+                              [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
+                            ];
+                            final grad = cardGradients[index % cardGradients.length];
+                            final accentColor = grad[0];
+
+                            return GestureDetector(
+                              onTap: () {
+                                if (_longPressedLocationId != null) {
+                                  setState(() => _longPressedLocationId = null);
+                                  return;
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LocationStudentsPage(locationName: location['name']),
+                                  ),
+                                );
+                              },
+                              onLongPress: () {
+                                setState(() {
+                                  _longPressedLocationId = isLongPressed ? null : location['id'];
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.only(bottom: 14),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  gradient: LinearGradient(
+                                    colors: isLongPressed
+                                        ? [Colors.red.withOpacity(0.25), Colors.red.withOpacity(0.12)]
+                                        : [accentColor.withOpacity(0.18), accentColor.withOpacity(0.06)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  border: Border.all(
+                                    color: isLongPressed
+                                        ? Colors.redAccent.withOpacity(0.5)
+                                        : accentColor.withOpacity(0.35),
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: accentColor.withOpacity(0.15),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      child: Row(
+                                        children: [
+                                          // Icon container
+                                          Container(
+                                            width: 48, height: 48,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [accentColor.withOpacity(0.5), accentColor.withOpacity(0.25)],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius: BorderRadius.circular(14),
+                                              border: Border.all(color: accentColor.withOpacity(0.4), width: 1),
+                                            ),
+                                            child: isLongPressed
+                                                ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                                                : Icon(Icons.location_on_rounded, color: Colors.white, size: 22),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          // Text content
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  location['name'],
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 15,
+                                                    letterSpacing: 0.1,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 5),
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: accentColor.withOpacity(0.2),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(color: accentColor.withOpacity(0.35), width: 0.8),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Icon(Icons.currency_rupee_rounded, color: accentColor, size: 11),
+                                                          Text(
+                                                            '${location['fee']}',
+                                                            style: TextStyle(
+                                                              color: accentColor,
+                                                              fontSize: 12,
+                                                              fontWeight: FontWeight.w700,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'Bus Fee',
+                                                      style: TextStyle(
+                                                        color: Colors.white.withOpacity(0.4),
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Edit button
+                                          GestureDetector(
+                                            onTap: () async {
+                                              setState(() => _longPressedLocationId = null);
+                                              final result = await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => EditLocationPage(
+                                                    locationId: location['id'],
+                                                    locationName: location['name'],
+                                                    currentFee: (location['fee'] as num).toDouble(),
+                                                  ),
+                                                ),
+                                              );
+                                              if (result == true) _loadLocations();
+                                            },
+                                            child: Container(
+                                              width: 38, height: 38,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(11),
+                                                border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+                                              ),
+                                              child: Icon(Icons.edit_rounded, color: Colors.white.withOpacity(0.8), size: 17),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                            );
+                  }),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -2210,6 +2452,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _notifications = notifications;
         _isLoading = false;
       });
+      // Mark all as read
+      for (final n in notifications) {
+        final id = (n['_id'] ?? n['id'])?.toString();
+        if (id != null && n['read'] != true) {
+          ApiService.markNotificationRead(id).catchError((_) {});
+        }
+      }
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -2231,34 +2480,143 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Payment Notifications'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Notifications',
+            style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
           : _notifications.isEmpty
-              ? const Center(child: Text('No notifications'))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_off_rounded,
+                          size: 56, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text('No notifications',
+                          style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _notifications.length,
                   itemBuilder: (context, index) {
-                    final notification = _notifications[index];
-                    return Card(
+                    final n = _notifications[index];
+                    final id = (n['_id'] ?? n['id'])?.toString() ?? '';
+                    final type = n['type']?.toString() ?? 'payment';
+                    final isPayment = type == 'payment';
+                    final isUnread = n['read'] != true;
+
+                    return Container(
                       margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFF10B981),
-                          child: Icon(Icons.payment, color: Colors.white),
+                      decoration: BoxDecoration(
+                        color: isUnread
+                            ? const Color(0xFFEEF2FF)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isUnread
+                              ? const Color(0xFFC7D2FE)
+                              : Colors.grey.shade200,
                         ),
-                        title: Text(notification['studentName'] ?? 'Student'),
-                        subtitle: Text(
-                          'Phone: ${notification['phone']}\n'
-                          'Amount: ₹${notification['amount']}\n'
-                          'Location: ${notification['location']}',
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: isPayment
+                                ? const Color(0xFF10B981).withOpacity(0.1)
+                                : const Color(0xFF4F46E5).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            isPayment
+                                ? Icons.receipt_long_rounded
+                                : Icons.feedback_rounded,
+                            color: isPayment
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF4F46E5),
+                            size: 22,
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                n['studentName'] ?? 'Student',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isPayment
+                                    ? const Color(0xFF10B981).withOpacity(0.1)
+                                    : const Color(0xFF4F46E5).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isPayment ? 'PAYMENT' : 'FEEDBACK',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: isPayment
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFF4F46E5),
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              n['message'] ?? (isPayment
+                                  ? 'Phone: ${n['phone'] ?? ''}  |  ₹${n['amount'] ?? 0}'
+                                  : n['message'] ?? ''),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B)),
+                            ),
+                            if (n['createdAt'] != null)
+                              Text(
+                                n['createdAt'].toString().split('T')[0],
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF94A3B8)),
+                              ),
+                          ],
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteNotification(notification['_id']),
+                          icon: const Icon(Icons.delete_rounded,
+                              color: Colors.red, size: 20),
+                          onPressed: id.isEmpty
+                              ? null
+                              : () => _deleteNotification(id),
                         ),
                       ),
                     );
@@ -2822,6 +3180,176 @@ class _AllLocationsPageState extends State<AllLocationsPage> {
                         trailing: IconButton(
                           icon: const Icon(Icons.edit, color: Color(0xFF4F46E5)),
                           onPressed: () => _editLocation(location),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+class FeedbackPage extends StatefulWidget {
+  const FeedbackPage({super.key});
+
+  @override
+  State<FeedbackPage> createState() => _FeedbackPageState();
+}
+
+class _FeedbackPageState extends State<FeedbackPage> {
+  List<dynamic> _feedbacks = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeedbacks();
+  }
+
+  Future<void> _loadFeedbacks() async {
+    try {
+      final notifications = await ApiService.getNotifications();
+      setState(() {
+        _feedbacks = notifications
+            .where((n) => n['type']?.toString() == 'feedback')
+            .toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Student Feedback',
+            style: TextStyle(
+                fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        iconTheme: const IconThemeData(color: Color(0xFF10B981)),
+      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF10B981)))
+          : _feedbacks.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.feedback_outlined,
+                          size: 56, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text('No feedback yet',
+                          style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _feedbacks.length,
+                  itemBuilder: (context, index) {
+                    final fb = _feedbacks[index];
+                    final name = fb['studentName']?.toString() ?? 'Student';
+                    final phone = fb['phone']?.toString() ?? '';
+                    final message = fb['message']?.toString() ?? '';
+                    final date =
+                        fb['createdAt']?.toString().split('T')[0] ?? '';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.person_rounded,
+                                      color: Color(0xFF10B981), size: 22),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                              color: Color(0xFF0F172A))),
+                                      if (phone.isNotEmpty)
+                                        Text(phone,
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF64748B))),
+                                    ],
+                                  ),
+                                ),
+                                if (date.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(date,
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF94A3B8),
+                                            fontWeight: FontWeight.w500)),
+                                  ),
+                              ],
+                            ),
+                            if (message.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: const Color(0xFFBBF7D0)),
+                                ),
+                                child: Text(
+                                  message,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF166534),
+                                      height: 1.5),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     );

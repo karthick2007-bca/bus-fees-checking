@@ -140,6 +140,16 @@ class ApiService {
     await http.delete(Uri.parse('$baseUrl/api/recyclebin/$id')).timeout(timeout);
   }
   
+  static Future<void> saveNotification(Map<String, dynamic> data) async {
+    await http.post(Uri.parse('$baseUrl/api/notifications'),
+        headers: _headers, body: jsonEncode(data)).timeout(timeout);
+  }
+
+  static Future<void> saveFeedback(Map<String, dynamic> data) async {
+    await http.post(Uri.parse('$baseUrl/api/feedback'),
+        headers: _headers, body: jsonEncode(data)).timeout(timeout);
+  }
+
   // --- 7. AUTH (Add logic if needed) ---
   static Future<dynamic> loginStudent(String userId, String password) async {
     // Implement login logic here

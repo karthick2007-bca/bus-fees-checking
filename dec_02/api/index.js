@@ -170,7 +170,32 @@ app.delete('/api/recyclebin/:id', async (req, res) => {
 app.get('/api/notifications', async (req, res) => {
   try {
     const db = await connectToDatabase();
-    res.json(await db.collection('notifications').find({}).toArray());
+    res.json(await db.collection('notifications').find({}).sort({ createdAt: -1 }).toArray());
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const db = await connectToDatabase();
+    res.json(await db.collection('notifications').insertOne({ ...req.body, read: false, createdAt: new Date().toISOString() }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const db = await connectToDatabase();
+    const feedback = { ...req.body, createdAt: new Date().toISOString() };
+    await db.collection('feedback').insertOne(feedback);
+    // Also save as notification for admin
+    await db.collection('notifications').insertOne({
+      type: 'feedback',
+      studentName: req.body.studentName || 'Student',
+      phone: req.body.phone || '',
+      message: req.body.message || '',
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+    res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
