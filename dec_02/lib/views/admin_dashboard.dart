@@ -526,7 +526,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               // Row 1
                               Row(
                                 children: [
-                                  _menuTile(icon: Icons.add_location_alt_rounded, label: 'Add Location', color: const Color(0xFF6C00FF),
+                                  _menuuyTile(icon: Icons.add_location_alt_rounded, label: 'Add Location', color: const Color(0xFF6C00FF),
                                     onTap: () async {
                                       setState(() => isMenuExpanded = false);
                                       final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddLocationPage()));
