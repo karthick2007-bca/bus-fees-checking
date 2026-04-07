@@ -143,7 +143,7 @@ class _LandingViewState extends State<LandingView> {
                     description: 'Manage routes, students,\nfees and analytics',
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
 
                   // Student Card
                   _RoleCard(
@@ -231,7 +231,7 @@ class _RoleCard extends StatelessWidget {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, hovered ? -4 : 0, 0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -256,7 +256,7 @@ class _RoleCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(28),
             splashColor: Colors.white.withValues(alpha: 0.06),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -264,17 +264,17 @@ class _RoleCard extends StatelessWidget {
                     children: [
                       // Icon box
                       Container(
-                        width: 64,
-                        height: 64,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: Colors.white.withValues(alpha: 0.15),
                             width: 1.5,
                           ),
                         ),
-                        child: Icon(icon, size: 32, color: iconColor),
+                        child: Icon(icon, size: 24, color: iconColor),
                       ),
                       const Spacer(),
                       // Arrow chip
@@ -282,40 +282,40 @@ class _RoleCard extends StatelessWidget {
                         duration: const Duration(milliseconds: 200),
                         transform: Matrix4.translationValues(hovered ? 5 : 0, 0, 0),
                         child: Container(
-                          width: 40,
-                          height: 40,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(9),
                             border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                           ),
                           child: Icon(
                             Icons.arrow_forward_rounded,
                             color: iconColor,
-                            size: 20,
+                            size: 16,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 22,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     description,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w300,
                       color: Colors.white.withValues(alpha: 0.55),
-                      height: 1.5,
+                      height: 1.4,
                     ),
                   ),
                 ],

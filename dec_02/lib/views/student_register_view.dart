@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -597,7 +598,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     );
   }
 
-  // Build form field
+  // Glass transparent field
   Widget _field(TextEditingController ctrl, String label, {bool readOnly = false}) {
     final icons = {
       'Student Name': Icons.person,
@@ -612,38 +613,47 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: ctrl,
-        readOnly: readOnly,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
-          filled: true,
-          fillColor: readOnly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Colors.red),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: TextFormField(
+            controller: ctrl,
+            readOnly: readOnly,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
+              prefixIcon: Icon(icon, color: Colors.white70, size: 20),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Colors.white, width: 1.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Colors.redAccent),
+              ),
+              errorStyle: const TextStyle(color: Colors.redAccent),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Required';
+              if (label == 'Date of Birth') {
+                try { DateTime.parse(v); } catch (e) { return 'Invalid date format. Use YYYY-MM-DD'; }
+              }
+              return null;
+            },
           ),
         ),
-        validator: (v) {
-          if (v == null || v.isEmpty) return 'Required';
-          if (label == 'Date of Birth') {
-            try { DateTime.parse(v); } catch (e) { return 'Invalid date format. Use YYYY-MM-DD'; }
-          }
-          return null;
-        },
       ),
     );
   }
@@ -694,18 +704,19 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     }
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Student Registration', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        title: const Text('Student Registration', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Color(0xFF4F46E5)),
+          icon: const Icon(Icons.menu, color: Colors.white),
           onPressed: () => setState(() => _isFrameOpen = !_isFrameOpen),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF94A3B8)),
+            icon: const Icon(Icons.logout, color: Colors.white70),
             onPressed: _logout,
             tooltip: 'Logout',
           ),
@@ -713,10 +724,24 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       ),
       body: Stack(
         children: [
+          // Background image
+          Positioned.fill(
+            child: Image.network(
+              'https://thumbs.dreamstime.com/b/students-journey-knowledge-vibrant-artwork-capturing-generative-ai-319945792.jpg',
+              fit: BoxFit.cover,
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : Container(color: const Color(0xFF1a1a2e)),
+              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1a1a2e)),
+            ),
+          ),
+          // Dark overlay
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(0.45)),
+          ),
           _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 560),
@@ -724,25 +749,32 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                         key: _formKey,
                         child: Column(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              margin: const EdgeInsets.only(bottom: 20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFC7D2FE)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.person_pin, color: Color(0xFF4F46E5)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Logged in as: $_currentLoggedInPhone',
-                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF4F46E5)),
-                                    ),
+                            // Logged in badge
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.white.withOpacity(0.25)),
                                   ),
-                                ],
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person_pin, color: Colors.white),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Logged in as: $_currentLoggedInPhone',
+                                          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                             _field(nameCtrl, 'Student Name'),
@@ -754,77 +786,106 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                             _field(dobCtrl, 'Date of Birth', readOnly: true),
                             const SizedBox(height: 8),
                             _isLoadingRoutes
-                                ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
-                                : DropdownButtonFormField<location_model.Route>(
-                                    value: selectedRoute,
-                                    decoration: InputDecoration(
-                                      labelText: 'Location',
-                                      prefixIcon: const Icon(Icons.location_on, color: Color(0xFF4F46E5)),
-                                      filled: true,
-                                      fillColor: const Color(0xFFF8FAFC),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
+                                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                      child: DropdownButtonFormField<location_model.Route>(
+                                        value: selectedRoute,
+                                        dropdownColor: Colors.black.withOpacity(0.8),
+                                        style: const TextStyle(color: Colors.white),
+                                        iconEnabledColor: Colors.white70,
+                                        decoration: InputDecoration(
+                                          labelText: 'Location',
+                                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
+                                          prefixIcon: const Icon(Icons.location_on, color: Colors.white70, size: 20),
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                                          ),
+                                        ),
+                                        hint: Text('Select Location', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                                        items: routes.map((r) => DropdownMenuItem<location_model.Route>(
+                                          value: r,
+                                          child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})', style: const TextStyle(color: Colors.white)),
+                                        )).toList(),
+                                        onChanged: (location_model.Route? route) {
+                                          setState(() {
+                                            selectedRoute = route;
+                                            amountCtrl.text = route?.fee.toString() ?? '';
+                                          });
+                                        },
+                                        validator: (v) => v == null ? 'Select location' : null,
                                       ),
                                     ),
-                                    hint: const Text('Select Location'),
-                                    items: routes.map((r) => DropdownMenuItem<location_model.Route>(
-                                      value: r,
-                                      child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})'),
-                                    )).toList(),
-                                    onChanged: (location_model.Route? route) {
-                                      setState(() {
-                                        selectedRoute = route;
-                                        amountCtrl.text = route?.fee.toString() ?? '';
-                                      });
-                                    },
-                                    validator: (v) => v == null ? 'Select location' : null,
                                   ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: amountCtrl,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                labelText: 'Amount',
-                                prefixText: '₹ ',
-                                prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF4F46E5)),
-                                filled: true,
-                                fillColor: const Color(0xFFF1F5F9),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: TextFormField(
+                                  controller: amountCtrl,
+                                  readOnly: true,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                  decoration: InputDecoration(
+                                    labelText: 'Amount',
+                                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
+                                    prefixText: '₹ ',
+                                    prefixStyle: const TextStyle(color: Colors.white),
+                                    prefixIcon: const Icon(Icons.currency_rupee, color: Colors.white70, size: 20),
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                             const SizedBox(height: 28),
-                            ElevatedButton(
-                              onPressed: submit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4F46E5),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 56),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                elevation: 0,
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.payment, size: 20),
-                                  SizedBox(width: 10),
-                                  Text('Pay Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                                ],
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: ElevatedButton(
+                                  onPressed: submit,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white.withOpacity(0.15),
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 56),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: Colors.white.withOpacity(0.4)),
+                                    ),
+                                    elevation: 0,
+                                    shadowColor: Colors.transparent,
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.payment, size: 20),
+                                      SizedBox(width: 10),
+                                      Text('Pay Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -843,19 +904,19 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20)],
+                  color: Colors.black.withOpacity(0.6),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 48),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Menu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                        const Text('Menu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                          icon: const Icon(Icons.close, color: Colors.white70),
                           onPressed: () => setState(() => _isFrameOpen = false),
                         ),
                       ],
@@ -864,7 +925,7 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                     InkWell(
                       onTap: () async {
                         if (await _verifySession()) {
-                          final result = await Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => EditReportPage(
@@ -883,14 +944,15 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.edit_location, color: Color(0xFF4F46E5)),
+                            Icon(Icons.edit_location, color: Colors.white),
                             SizedBox(width: 12),
-                            Text('Change Location', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF4F46E5))),
+                            Text('Change Location', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                           ],
                         ),
                       ),
