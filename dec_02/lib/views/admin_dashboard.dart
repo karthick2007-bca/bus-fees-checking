@@ -2792,7 +2792,16 @@ class _LocationStudentsPageState extends State<LocationStudentsPage> {
                                 final name = student['name']?.toString() ?? '';
                                 final initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
 
-                                return Container(
+                                return GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AdminStudentDetailPage(
+                                        student: Map<String, dynamic>.from(student),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Container(
                                   margin: const EdgeInsets.only(bottom: 10),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(18),
@@ -2855,15 +2864,275 @@ class _LocationStudentsPageState extends State<LocationStudentsPage> {
                                                 ],
                                               ),
                                             ),
+                                            Icon(Icons.chevron_right_rounded, color: accent.withOpacity(0.5), size: 20),
                                           ],
                                         ),
                                       ),
                                     ),
                                   ),
+                                ),
                                 );
                               },
                             ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminStudentDetailPage extends StatelessWidget {
+  final Map<String, dynamic> student;
+  const AdminStudentDetailPage({super.key, required this.student});
+
+  static const _bg    = Color(0xFF060818);
+  static const _card  = Color(0xFF1A1A2E);
+  static const _accent = Color(0xFF6C63FF);
+  static const _green  = Color(0xFF10B981);
+  static const _amber  = Color(0xFFF59E0B);
+  static const _tp    = Color(0xFFEEEEFF);
+  static const _ts    = Color(0xFF8888AA);
+  static const _border = Color(0xFF2E2E4A);
+
+  @override
+  Widget build(BuildContext context) {
+    final name     = student['name']?.toString() ?? '';
+    final phone    = student['phone']?.toString() ?? 'N/A';
+    final dob      = student['dob']?.toString().split('T')[0] ?? 'N/A';
+    final rollNo   = student['rollNo']?.toString() ?? 'N/A';
+    final cls      = student['studentClass']?.toString() ?? 'N/A';
+    final parent   = student['parentName']?.toString() ?? 'N/A';
+    final address  = student['address']?.toString() ?? 'N/A';
+    final location = student['location']?.toString() ?? 'N/A';
+    final amtPaid  = student['amountPaid']?.toString() ?? '0';
+    final totalDue = student['totalDue']?.toString() ?? '0';
+    final status   = student['status']?.toString() ?? 'pending';
+    final paymentId = student['paymentId']?.toString() ?? '';
+    final payDate  = student['paymentDate']?.toString().split('T')[0] ?? '';
+    final isPaid   = status == 'succeed';
+    final initial  = name.isNotEmpty ? name[0].toUpperCase() : (phone.isNotEmpty ? phone[0] : 'S');
+
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [_accent, Color(0xFF9C63FF)]),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(Icons.person_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          name.isNotEmpty ? name : phone,
+                          style: const TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.14)),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [_bg, Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          Positioned(top: -80, left: -80,
+            child: Container(width: 260, height: 260,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [_accent.withOpacity(0.18), Colors.transparent])))),
+          Positioned(bottom: -60, right: -60,
+            child: Container(width: 220, height: 220,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [_green.withOpacity(0.14), Colors.transparent])))),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  // ── Avatar + status ──
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 80, height: 80,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isPaid
+                                  ? [_green, const Color(0xFF059669)]
+                                  : [_accent, const Color(0xFF9C63FF)],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(
+                              color: (isPaid ? _green : _accent).withOpacity(0.4),
+                              blurRadius: 20, offset: const Offset(0, 6),
+                            )],
+                          ),
+                          child: Center(
+                            child: Text(initial,
+                              style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          name.isNotEmpty ? name : 'No Name',
+                          style: const TextStyle(color: _tp, fontSize: 20, fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: (isPaid ? _green : _amber).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: (isPaid ? _green : _amber).withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                color: isPaid ? _green : _amber, size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isPaid ? 'PAYMENT SUCCESSFUL' : 'PAYMENT PENDING',
+                                style: TextStyle(
+                                  color: isPaid ? _green : _amber,
+                                  fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Personal Info ──
+                  _sectionLabel('Personal Information', Icons.person_outline_rounded),
+                  const SizedBox(height: 12),
+                  _infoCard([
+                    _infoRow(Icons.badge_rounded,        'Roll No',    rollNo,   const Color(0xFF0EA5E9)),
+                    _infoRow(Icons.school_rounded,       'Class',      cls,      const Color(0xFF8B5CF6)),
+                    _infoRow(Icons.phone_rounded,        'Phone',      phone,    _accent),
+                    _infoRow(Icons.cake_rounded,         'Date of Birth', dob,   const Color(0xFFEC4899)),
+                    _infoRow(Icons.supervisor_account_rounded, 'Parent', parent, const Color(0xFFF59E0B)),
+                    _infoRow(Icons.home_rounded,         'Address',    address,  _green),
+                  ]),
+                  const SizedBox(height: 16),
+
+                  // ── Bus Info ──
+                  _sectionLabel('Bus & Fee Details', Icons.directions_bus_rounded),
+                  const SizedBox(height: 12),
+                  _infoCard([
+                    _infoRow(Icons.location_on_rounded,      'Location',    location, _accent),
+                    _infoRow(Icons.currency_rupee_rounded,   'Amount Paid', '₹$amtPaid', _green),
+                    _infoRow(Icons.account_balance_wallet_rounded, 'Balance Due', '₹$totalDue',
+                        totalDue == '0' ? _green : _amber),
+                    if (paymentId.isNotEmpty)
+                      _infoRow(Icons.receipt_rounded, 'Payment ID', paymentId, _ts),
+                    if (payDate.isNotEmpty)
+                      _infoRow(Icons.calendar_today_rounded, 'Payment Date', payDate, _ts),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String title, IconData icon) {
+    return Row(children: [
+      Icon(icon, color: _accent, size: 15),
+      const SizedBox(width: 7),
+      Text(title.toUpperCase(),
+        style: const TextStyle(color: _ts, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+      const SizedBox(width: 10),
+      Expanded(child: Container(height: 1, color: _border)),
+    ]);
+  }
+
+  Widget _infoCard(List<Widget> rows) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(children: rows),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: _ts, fontSize: 10, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(value.isNotEmpty ? value : '—',
+                  style: const TextStyle(color: _tp, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -3294,6 +3563,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
   List<dynamic> _notifications = [];
   bool _isLoading = true;
 
+  static const _bg     = Color(0xFF060818);
+  static const _card   = Color(0xFF1A1A2E);
+  static const _border = Color(0xFF2E2E4A);
+  static const _accent = Color(0xFF6C63FF);
+  static const _green  = Color(0xFF10B981);
+  static const _tp     = Color(0xFFEEEEFF);
+  static const _ts     = Color(0xFF8888AA);
+
   @override
   void initState() {
     super.initState();
@@ -3303,11 +3580,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> _loadNotifications() async {
     try {
       final notifications = await ApiService.getNotifications();
-      setState(() {
-        _notifications = notifications;
-        _isLoading = false;
-      });
-      // Mark all as read
+      setState(() { _notifications = notifications; _isLoading = false; });
       for (final n in notifications) {
         final id = (n['_id'] ?? n['id'])?.toString();
         if (id != null && n['read'] != true) {
@@ -3324,159 +3597,289 @@ class _NotificationsPageState extends State<NotificationsPage> {
       await ApiService.deleteNotification(id);
       _loadNotifications();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _deleteAll() async {
+    final confirm = await showDialog<bool>(
+      context: context, barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: _card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Clear All', style: TextStyle(color: _tp, fontWeight: FontWeight.w800)),
+        content: const Text('Delete all notifications?', style: TextStyle(color: _ts)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: _ts))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete All', style: TextStyle(color: Colors.redAccent))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      for (final n in List.from(_notifications)) {
+        final id = (n['_id'] ?? n['id'])?.toString() ?? '';
+        if (id.isNotEmpty) await ApiService.deleteNotification(id).catchError((_) {});
       }
+      _loadNotifications();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final unread = _notifications.where((n) => n['read'] != true).length;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Notifications',
-            style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF4F46E5)))
-          : _notifications.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: _bg,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
                     children: [
-                      Icon(Icons.notifications_off_rounded,
-                          size: 56, color: Colors.grey.shade300),
-                      const SizedBox(height: 12),
-                      Text('No notifications',
-                          style: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontWeight: FontWeight.w500)),
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6C00FF), Color(0xFF0066FF)],
+                            begin: Alignment.topLeft, end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Row(children: [
+                          const Text('Notifications',
+                            style: TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
+                          if (unread > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                              ),
+                              child: Text('$unread new',
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ]),
+                      ),
+                      if (_notifications.isNotEmpty)
+                        GestureDetector(
+                          onTap: _deleteAll,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(9),
+                              border: Border.all(color: Colors.red.withOpacity(0.25)),
+                            ),
+                            child: const Text('Clear All',
+                              style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.14)),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 15),
+                        ),
+                      ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _notifications.length,
-                  itemBuilder: (context, index) {
-                    final n = _notifications[index];
-                    final id = (n['_id'] ?? n['id'])?.toString() ?? '';
-                    final type = n['type']?.toString() ?? 'payment';
-                    final isPayment = type == 'payment';
-                    final isUnread = n['read'] != true;
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [_bg, Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          Positioned(top: -80, left: -80,
+            child: Container(width: 260, height: 260,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [_accent.withOpacity(0.15), Colors.transparent])))),
+          Positioned(bottom: -60, right: -60,
+            child: Container(width: 220, height: 220,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [_green.withOpacity(0.12), Colors.transparent])))),
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: _accent))
+                : _notifications.isEmpty
+                    ? Center(
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Container(
+                            width: 72, height: 72,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.06),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: Icon(Icons.notifications_off_rounded,
+                              color: Colors.white.withOpacity(0.25), size: 32),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('No notifications',
+                            style: TextStyle(color: _ts, fontSize: 15, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 6),
+                          Text('You\'re all caught up!',
+                            style: TextStyle(color: _ts.withOpacity(0.5), fontSize: 12)),
+                        ]),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final n = _notifications[index];
+                          final id = (n['_id'] ?? n['id'])?.toString() ?? '';
+                          final isPayment = n['type']?.toString() == 'payment';
+                          final isUnread = n['read'] != true;
+                          final accentColor = isPayment ? _green : _accent;
+                          final date = n['createdAt']?.toString().split('T')[0] ?? '';
+                          final msg = n['message']?.toString() ??
+                              (isPayment
+                                  ? 'Phone: ${n['phone'] ?? ''}  ·  ₹${n['amount'] ?? 0}'
+                                  : '');
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: isUnread
-                            ? const Color(0xFFEEF2FF)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isUnread
-                              ? const Color(0xFFC7D2FE)
-                              : Colors.grey.shade200,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        leading: Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: isPayment
-                                ? const Color(0xFF10B981).withOpacity(0.1)
-                                : const Color(0xFF4F46E5).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            isPayment
-                                ? Icons.receipt_long_rounded
-                                : Icons.feedback_rounded,
-                            color: isPayment
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFF4F46E5),
-                            size: 22,
-                          ),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                n['studentName'] ?? 'Student',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: isUnread
+                                  ? accentColor.withOpacity(0.07)
+                                  : _card,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isUnread
+                                    ? accentColor.withOpacity(0.3)
+                                    : _border,
+                                width: 1,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isPayment
-                                    ? const Color(0xFF10B981).withOpacity(0.1)
-                                    : const Color(0xFF4F46E5).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                isPayment ? 'PAYMENT' : 'FEEDBACK',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: isPayment
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFF4F46E5),
-                                  letterSpacing: 1,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Icon
+                                      Container(
+                                        width: 44, height: 44,
+                                        decoration: BoxDecoration(
+                                          color: accentColor.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(13),
+                                          border: Border.all(color: accentColor.withOpacity(0.3)),
+                                        ),
+                                        child: Icon(
+                                          isPayment ? Icons.receipt_long_rounded : Icons.feedback_rounded,
+                                          color: accentColor, size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(children: [
+                                              Expanded(
+                                                child: Text(
+                                                  n['studentName']?.toString() ?? 'Student',
+                                                  style: const TextStyle(color: _tp, fontWeight: FontWeight.w700, fontSize: 14),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: accentColor.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(7),
+                                                ),
+                                                child: Text(
+                                                  isPayment ? 'PAYMENT' : 'FEEDBACK',
+                                                  style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                                                ),
+                                              ),
+                                            ]),
+                                            if (msg.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(msg, style: const TextStyle(color: _ts, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                            ],
+                                            if (date.isNotEmpty) ...[
+                                              const SizedBox(height: 5),
+                                              Row(children: [
+                                                Icon(Icons.access_time_rounded, color: _ts.withOpacity(0.5), size: 11),
+                                                const SizedBox(width: 4),
+                                                Text(date, style: TextStyle(color: _ts.withOpacity(0.5), fontSize: 10)),
+                                                if (isUnread) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    width: 6, height: 6,
+                                                    decoration: BoxDecoration(
+                                                      color: accentColor,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ]),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Delete
+                                      GestureDetector(
+                                        onTap: id.isEmpty ? null : () => _deleteNotification(id),
+                                        child: Container(
+                                          width: 32, height: 32,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(9),
+                                            border: Border.all(color: Colors.red.withOpacity(0.2)),
+                                          ),
+                                          child: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 15),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              n['message'] ?? (isPayment
-                                  ? 'Phone: ${n['phone'] ?? ''}  |  ₹${n['amount'] ?? 0}'
-                                  : n['message'] ?? ''),
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B)),
-                            ),
-                            if (n['createdAt'] != null)
-                              Text(
-                                n['createdAt'].toString().split('T')[0],
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF94A3B8)),
-                              ),
-                          ],
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_rounded,
-                              color: Colors.red, size: 20),
-                          onPressed: id.isEmpty
-                              ? null
-                              : () => _deleteNotification(id),
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
     );
   }
 }
