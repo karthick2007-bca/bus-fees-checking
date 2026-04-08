@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -6,7 +5,6 @@ import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
 import 'student_report.dart';
 import 'edit_report_page.dart';
-import 'student_login_view.dart';
 
 class StudentRegisterView extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -33,7 +31,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   bool _isLoading = false;
   bool _isSessionValid = true;
 
-  // Text Controllers
   final nameCtrl = TextEditingController();
   final rollCtrl = TextEditingController();
   final classCtrl = TextEditingController();
@@ -45,46 +42,44 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
 
   List<location_model.Route> routes = [];
   location_model.Route? selectedRoute;
-  
-  // Store current logged in user
+
   String? _currentLoggedInPhone;
   String? _currentLoggedInDob;
   Map<String, dynamic>? _currentStudentData;
 
+  // Design constants
+  static const _bg = Color(0xFF0F0F1A);
+  static const _overlayColor = Color(0xCC0F0F1A); // 80% dark overlay
+  static const _card = Color(0xFF1A1A2E);
+  static const _accent = Color(0xFF6C63FF);
+  static const _accent2 = Color(0xFF00D4AA);
+  static const _textPrimary = Color(0xFFEEEEFF);
+  static const _textSecondary = Color(0xFF8888AA);
+  static const _fieldBg = Color(0xFF22223A);
+  static const _border = Color(0xFF2E2E4A);
+
   @override
   void initState() {
     super.initState();
-    
-    // Clear all form fields when opening a new registration form
     _clearFormFields();
-    
     amountCtrl.clear();
-    
     _paymentService.initialize(
       onSuccess: _handlePaymentSuccess,
       onFailure: _handlePaymentFailure,
-      onWallet: () => print('Wallet selected'),
+      onWallet: () {},
     );
-    
-    // Load routes and validate session
     _initializeView();
   }
 
   @override
   void dispose() {
     _paymentService.dispose();
-    nameCtrl.dispose();
-    rollCtrl.dispose();
-    classCtrl.dispose();
-    parentCtrl.dispose();
-    addressCtrl.dispose();
-    phoneCtrl.dispose();
-    dobCtrl.dispose();
-    amountCtrl.dispose();
+    nameCtrl.dispose(); rollCtrl.dispose(); classCtrl.dispose();
+    parentCtrl.dispose(); addressCtrl.dispose(); phoneCtrl.dispose();
+    dobCtrl.dispose(); amountCtrl.dispose();
     super.dispose();
   }
 
-  // Initialize view with session validation
   Future<void> _initializeView() async {
     await _validateSession();
     if (_isSessionValid) {
@@ -93,72 +88,38 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
     }
   }
 
-  // Validate current session
   Future<void> _validateSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _currentLoggedInPhone = prefs.getString('loggedInPhone');
       _currentLoggedInDob = prefs.getString('loggedInDob');
-
-      print('Validating session - Phone: $_currentLoggedInPhone, DOB: $_currentLoggedInDob');
-
       if (_currentLoggedInPhone == null || _currentLoggedInDob == null) {
-        print('No valid session found');
-        setState(() {
-          _isSessionValid = false;
-        });
+        setState(() => _isSessionValid = false);
         _showSessionExpiredDialog();
       }
     } catch (e) {
-      print('Error validating session: $e');
-      setState(() {
-        _isSessionValid = false;
-      });
+      setState(() => _isSessionValid = false);
     }
   }
 
-  // Clear all form fields
   void _clearFormFields() {
-    nameCtrl.clear();
-    rollCtrl.clear();
-    classCtrl.clear();
-    parentCtrl.clear();
-    addressCtrl.clear();
-    phoneCtrl.clear();
-    dobCtrl.clear();
-    amountCtrl.clear();
-    setState(() {
-      selectedRoute = null;
-      _currentStudentData = null;
-    });
+    nameCtrl.clear(); rollCtrl.clear(); classCtrl.clear();
+    parentCtrl.clear(); addressCtrl.clear(); phoneCtrl.clear();
+    dobCtrl.clear(); amountCtrl.clear();
+    setState(() { selectedRoute = null; _currentStudentData = null; });
   }
 
-  // Load ONLY logged-in student data
   Future<void> _loadLoggedInStudent() async {
     if (!_isSessionValid) return;
-    
     setState(() => _isLoading = true);
-    
     try {
-      print('Loading logged-in student: $_currentLoggedInPhone');
-
-      // Fetch all students (ApiService.getStudents() already has cache busting)
       final students = await ApiService.getStudents();
-      
-      // Find the specific logged-in student
       final loggedInStudent = students.firstWhere(
-        (s) {
-          final studentPhone = s['phone']?.toString();
-          final studentDob = s['dob']?.toString().split('T')[0];
-          return studentPhone == _currentLoggedInPhone && 
-                 studentDob == _currentLoggedInDob;
-        },
+        (s) => s['phone']?.toString() == _currentLoggedInPhone &&
+               s['dob']?.toString().split('T')[0] == _currentLoggedInDob,
         orElse: () => null,
       );
-
       if (loggedInStudent != null) {
-        print('Found logged-in student: ${loggedInStudent['name']}');
-        
         setState(() {
           _currentStudentData = Map<String, dynamic>.from(loggedInStudent);
           phoneCtrl.text = loggedInStudent['phone']?.toString() ?? '';
@@ -168,49 +129,29 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           classCtrl.text = loggedInStudent['studentClass']?.toString() ?? '';
           parentCtrl.text = loggedInStudent['parentName']?.toString() ?? '';
           addressCtrl.text = loggedInStudent['address']?.toString() ?? '';
-          
           if (loggedInStudent['location'] != null && routes.isNotEmpty) {
             final matches = routes.where((r) => r.name == loggedInStudent['location']).toList();
             if (matches.isNotEmpty) {
               selectedRoute = matches.first;
               amountCtrl.text = selectedRoute!.fee.toString();
-            } else {
-              selectedRoute = null;
-              amountCtrl.clear();
             }
           }
         });
       } else {
-        print('Logged-in student not found in database');
-        // Only show not found if truly not in DB - don't block if name is empty
         _showUserNotFoundDialog();
       }
     } catch (e) {
-      print('Error loading logged-in student: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading student data: $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.orange));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // Load routes/locations
   Future<void> loadRoutes() async {
-    setState(() {
-      _isLoadingRoutes = true;
-      _frameError = null;
-    });
-    
+    setState(() { _isLoadingRoutes = true; _frameError = null; });
     try {
       final data = await ApiService.getLocations();
-      print('Loaded locations: $data');
-      
       setState(() {
         routes = data.map((loc) => location_model.Route(
           id: loc['id']?.toString() ?? '',
@@ -219,36 +160,14 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
         )).toList();
         _isLoadingRoutes = false;
       });
-      
-      print('Routes count: ${routes.length}');
-      
     } catch (e) {
-      print("Error loading routes: $e");
-      setState(() {
-        _frameError = e.toString();
-        _isLoadingRoutes = false;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading locations: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() { _frameError = e.toString(); _isLoadingRoutes = false; });
     }
   }
 
-  // Handle payment success
   void _handlePaymentSuccess(dynamic response) async {
     try {
-      if (!await _verifySession()) {
-        _showSessionExpiredDialog();
-        return;
-      }
-
-      // Capture all form values BEFORE _saveStudent() clears the form
+      if (!await _verifySession()) { _showSessionExpiredDialog(); return; }
       final capturedName = nameCtrl.text;
       final capturedRoll = rollCtrl.text;
       final capturedClass = classCtrl.text;
@@ -258,711 +177,469 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
       final capturedDob = _currentLoggedInDob;
       final capturedLocation = selectedRoute?.name ?? '';
       final capturedAmount = selectedRoute?.fee ?? 0;
-
       await _saveStudent(fromPayment: true);
-
       final paymentId = response['paymentId']?.toString() ?? '';
       final now = DateTime.now().toIso8601String();
-
-      // Save transaction
       await ApiService.saveTransaction({
-        'paymentId': paymentId,
-        'orderId': response['orderId']?.toString() ?? '',
-        'studentId': capturedPhone,
-        'studentName': capturedName,
-        'phone': capturedPhone,
-        'rollNo': capturedRoll,
-        'amount': capturedAmount,
-        'status': 'success',
-        'timestamp': now,
+        'paymentId': paymentId, 'orderId': response['orderId']?.toString() ?? '',
+        'studentId': capturedPhone, 'studentName': capturedName,
+        'phone': capturedPhone, 'rollNo': capturedRoll,
+        'amount': capturedAmount, 'status': 'success', 'timestamp': now,
       });
-
-      // Auto-generate report based on student details after payment
       await ApiService.saveReport({
-        'phone': capturedPhone,
-        'name': capturedName,
-        'rollNo': capturedRoll,
-        'studentClass': capturedClass,
-        'parentName': capturedParent,
-        'address': capturedAddress,
-        'location': capturedLocation,
-        'dob': capturedDob,
-        'totalDue': 0,
-        'amountPaid': capturedAmount,
-        'status': 'succeed',
-        'paymentId': paymentId,
-        'paymentDate': now,
-        'generatedAt': now,
+        'phone': capturedPhone, 'name': capturedName, 'rollNo': capturedRoll,
+        'studentClass': capturedClass, 'parentName': capturedParent,
+        'address': capturedAddress, 'location': capturedLocation, 'dob': capturedDob,
+        'totalDue': 0, 'amountPaid': capturedAmount, 'status': 'succeed',
+        'paymentId': paymentId, 'paymentDate': now, 'generatedAt': now,
       });
-
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment Successful! Report generated ✅'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Navigate to report page with all captured data
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentReport(
-            phone: capturedPhone!,
-            dob: capturedDob!,
-            onLogout: () => _logout(),
-            initialData: {
-              'name': capturedName,
-              'rollNo': capturedRoll,
-              'studentClass': capturedClass,
-              'parentName': capturedParent,
-              'address': capturedAddress,
-              'phone': capturedPhone,
-              'dob': capturedDob,
-              'location': capturedLocation,
-              'amountPaid': capturedAmount,
-              'totalDue': 0,
-              'status': 'succeed',
-              'paymentId': paymentId,
-              'paymentDate': now,
-            },
-          ),
-        ),
-        (route) => false,
-      );
+        const SnackBar(content: Text('Payment Successful! ✅'), backgroundColor: Colors.green));
+      Navigator.pushAndRemoveUntil(context,
+        MaterialPageRoute(builder: (context) => StudentReport(
+          phone: capturedPhone!, dob: capturedDob!, onLogout: () => _logout(),
+          initialData: {
+            'name': capturedName, 'rollNo': capturedRoll, 'studentClass': capturedClass,
+            'parentName': capturedParent, 'address': capturedAddress,
+            'phone': capturedPhone, 'dob': capturedDob, 'location': capturedLocation,
+            'amountPaid': capturedAmount, 'totalDue': 0, 'status': 'succeed',
+            'paymentId': paymentId, 'paymentDate': now,
+          },
+        )), (route) => false);
     } catch (e) {
-      print('Error in payment success handler: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error processing payment: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
-  // Handle payment failure
   void _handlePaymentFailure(dynamic response) {
     if (!mounted) return;
-    
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment Failed: ${response['message'] ?? 'Unknown error'}'),
-        backgroundColor: Colors.red,
-      ),
-    );
+      SnackBar(content: Text('Payment Failed: ${response['message'] ?? 'Unknown error'}'),
+        backgroundColor: Colors.red));
   }
 
-  // Save/Update student
   Future<void> _saveStudent({bool fromPayment = false}) async {
     try {
-      if (!await _verifySession()) {
-        throw Exception('Session invalid');
-      }
-      
+      if (!await _verifySession()) throw Exception('Session invalid');
       final students = await ApiService.getStudents();
-      
       final existingStudent = students.firstWhere(
-        (s) => s['phone']?.toString() == _currentLoggedInPhone && 
+        (s) => s['phone']?.toString() == _currentLoggedInPhone &&
                s['dob']?.toString().split('T')[0] == _currentLoggedInDob,
         orElse: () => null,
       );
-
-      final studentData = {
+      await ApiService.addStudent({
         'id': existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        'name': nameCtrl.text,
-        'rollNo': rollCtrl.text,
-        'studentClass': classCtrl.text,
-        'parentName': parentCtrl.text,
-        'location': selectedRoute?.name ?? '',
-        'totalDue': 0,
-        'amountPaid': selectedRoute?.fee ?? 0,
-        'status': 'succeed',
-        'address': addressCtrl.text,
-        'phone': _currentLoggedInPhone,
-        'dob': _currentLoggedInDob,
+        'name': nameCtrl.text, 'rollNo': rollCtrl.text, 'studentClass': classCtrl.text,
+        'parentName': parentCtrl.text, 'location': selectedRoute?.name ?? '',
+        'totalDue': 0, 'amountPaid': selectedRoute?.fee ?? 0, 'status': 'succeed',
+        'address': addressCtrl.text, 'phone': _currentLoggedInPhone, 'dob': _currentLoggedInDob,
         'registrationDate': existingStudent?['registrationDate'] ?? DateTime.now().toIso8601String(),
         'lastUpdated': DateTime.now().toIso8601String(),
         'payments': existingStudent?['payments'] ?? [],
         'locationHistory': existingStudent?['locationHistory'] ?? [],
-      };
-
-      await ApiService.addStudent(studentData);
-
-      // Only clear form and call callbacks if NOT triggered from payment
+      });
       if (!fromPayment && mounted) {
         _clearFormFields();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Student Registered Successfully ✅'),
-            backgroundColor: Colors.green,
-          ),
-        );
+          const SnackBar(content: Text('Registered Successfully ✅'), backgroundColor: Colors.green));
         widget.onSuccess();
         widget.onRegisterSuccess();
       }
     } catch (e) {
-      print("Error saving student: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving student: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     }
   }
 
-  // Verify current session
   Future<bool> _verifySession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentPhone = prefs.getString('loggedInPhone');
-      final currentDob = prefs.getString('loggedInDob');
-      
-      final isValid = currentPhone == _currentLoggedInPhone && 
-             currentDob == _currentLoggedInDob &&
-             currentPhone != null;
-      
-      print('Session verification: $isValid');
-      return isValid;
-    } catch (e) {
-      print('Error verifying session: $e');
-      return false;
-    }
+      final p = prefs.getString('loggedInPhone');
+      final d = prefs.getString('loggedInDob');
+      return p == _currentLoggedInPhone && d == _currentLoggedInDob && p != null;
+    } catch (_) { return false; }
   }
 
-  // Clear logged-in user
   Future<void> _clearLoggedInUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('loggedInPhone');
-      await prefs.remove('loggedInDob');
-      
-      setState(() {
-        _currentLoggedInPhone = null;
-        _currentLoggedInDob = null;
-        _isSessionValid = false;
-        _currentStudentData = null;
-      });
-      
-      print('Logged-in user cleared');
-    } catch (e) {
-      print('Error clearing logged-in user: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('loggedInPhone');
+    await prefs.remove('loggedInDob');
+    setState(() {
+      _currentLoggedInPhone = null; _currentLoggedInDob = null;
+      _isSessionValid = false; _currentStudentData = null;
+    });
   }
 
-  // Navigate to login page
-  void _navigateToLogin() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentLoginView(
-          onBack: () {
-            // Handle back navigation - go back to previous screen
-            Navigator.pop(context);
-          },
-          onLoginSuccess: (phone, dob) {
-            // After successful login, navigate back to this view
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => StudentRegisterView(
-                  onSuccess: widget.onSuccess,
-                  onBack: widget.onBack,
-                  onRegisterSuccess: widget.onRegisterSuccess,
-                ),
-              ),
-            );
-          },
-          onRegister: () {
-            // If register is pressed, they're already here
-            // So just stay on this page
-            print('Already on register page');
-          },
-        ),
-      ),
-      (route) => false, // This removes all previous routes
-    );
-  }
+  void _navigateToLogin() { if (mounted) widget.onBack(); }
 
-  // Logout user
   Future<void> _logout() async {
     await _clearLoggedInUser();
-    
-    if (mounted) {
-      _navigateToLogin();
-    }
+    if (mounted) _navigateToLogin();
   }
 
-  // Show session expired dialog
   void _showSessionExpiredDialog() {
     if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Session Expired'),
-          content: const Text('Your session has expired. Please login again.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _logout();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+    showDialog(context: context, barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Session Expired'),
+        content: const Text('Your session has expired. Please login again.'),
+        actions: [TextButton(onPressed: () { Navigator.of(context).pop(); _logout(); }, child: const Text('OK'))],
+      ));
   }
 
-  // Show user not found dialog
   void _showUserNotFoundDialog() {
     if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('User Not Found'),
-          content: const Text('Your account could not be found. Please contact support or login again.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _logout();
-              },
-              child: const Text('Login Again'),
-            ),
-          ],
-        );
-      },
-    );
+    showDialog(context: context, barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('User Not Found'),
+        content: const Text('Your account could not be found. Please login again.'),
+        actions: [TextButton(onPressed: () { Navigator.of(context).pop(); _logout(); }, child: const Text('Login Again'))],
+      ));
   }
 
-  // Submit payment
   Future<void> submit() async {
-    // Verify session before proceeding
-    if (!await _verifySession()) {
-      _showSessionExpiredDialog();
-      return;
-    }
-    
+    if (!await _verifySession()) { _showSessionExpiredDialog(); return; }
     if (!_formKey.currentState!.validate()) return;
-
     if (selectedRoute == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select location'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+        const SnackBar(content: Text('Please select location'), backgroundColor: Colors.orange));
       return;
     }
-
-    // Verify that form data matches session
-    if (phoneCtrl.text != _currentLoggedInPhone || 
-        dobCtrl.text != _currentLoggedInDob) {
-      
-      print('Data mismatch! Form phone: ${phoneCtrl.text}, Session phone: $_currentLoggedInPhone');
-      
+    if (phoneCtrl.text != _currentLoggedInPhone || dobCtrl.text != _currentLoggedInDob) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Session verification failed. Please login again.'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) _logout();
-      });
-      
+        const SnackBar(content: Text('Session mismatch. Please login again.'), backgroundColor: Colors.red));
+      Future.delayed(const Duration(seconds: 2), () { if (mounted) _logout(); });
       return;
     }
-
-    // Open payment checkout
     _paymentService.openCheckout(
-      amount: selectedRoute!.fee,
-      name: nameCtrl.text,
-      phone: phoneCtrl.text, 
-      email: '',
-    );
+      amount: selectedRoute!.fee, name: nameCtrl.text, phone: phoneCtrl.text, email: '');
   }
 
-  // Glass transparent field
-  Widget _field(TextEditingController ctrl, String label, {bool readOnly = false}) {
+  // ── Field builder ──
+  Widget _field(TextEditingController ctrl, String label,
+      {bool readOnly = false, TextInputType? keyboardType}) {
     final icons = {
-      'Student Name': Icons.person,
-      'Roll No': Icons.badge,
-      'Std / Section': Icons.school,
-      'Parent Name': Icons.family_restroom,
-      'Address': Icons.home,
-      'Phone': Icons.phone,
-      'Date of Birth': Icons.calendar_today,
+      'Student Name': Icons.person_rounded,
+      'Roll No': Icons.badge_rounded,
+      'Std / Section': Icons.school_rounded,
+      'Parent Name': Icons.supervisor_account_rounded,
+      'Address': Icons.home_rounded,
+      'Phone': Icons.phone_rounded,
+      'Date of Birth': Icons.cake_rounded,
     };
-    final icon = icons[label] ?? Icons.edit;
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: TextFormField(
-            controller: ctrl,
-            readOnly: readOnly,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              labelText: label,
-              labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
-              prefixIcon: Icon(icon, color: Colors.white70, size: 20),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.08),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Colors.white, width: 1.5),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Colors.redAccent),
-              ),
-              errorStyle: const TextStyle(color: Colors.redAccent),
-            ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Required';
-              if (label == 'Date of Birth') {
-                try { DateTime.parse(v); } catch (e) { return 'Invalid date format. Use YYYY-MM-DD'; }
-              }
-              return null;
-            },
-          ),
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: ctrl,
+        readOnly: readOnly,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: _textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: _textSecondary, fontSize: 13),
+          prefixIcon: Icon(icons[label] ?? Icons.edit_rounded, color: _accent, size: 20),
+          filled: true,
+          fillColor: readOnly ? const Color(0xFF1E1E32) : _fieldBg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _border)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _border)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _accent, width: 1.8)),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.redAccent)),
+          errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 11),
         ),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'Required';
+          if (label == 'Date of Birth') {
+            try { DateTime.parse(v); } catch (_) { return 'Use YYYY-MM-DD'; }
+          }
+          return null;
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show loading or session invalid state
     if (!_isSessionValid) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: _bg,
         body: Center(
           child: Container(
-            width: 360,
-            padding: const EdgeInsets.all(40),
+            width: 340,
+            padding: const EdgeInsets.all(36),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 40, offset: const Offset(0, 20))],
+              color: _card,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _border),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
-                  child: Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
                 ),
-                const SizedBox(height: 24),
-                const Text('Session Expired', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                const SizedBox(height: 8),
-                const Text('Please login again to continue', style: TextStyle(color: Color(0xFF94A3B8))),
-                const SizedBox(height: 32),
-                ElevatedButton(
+                child: const Icon(Icons.lock_outline_rounded, color: Colors.redAccent, size: 30),
+              ),
+              const SizedBox(height: 20),
+              const Text('Session Expired', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _textPrimary)),
+              const SizedBox(height: 8),
+              const Text('Please login again to continue', style: TextStyle(color: _textSecondary, fontSize: 13)),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity, height: 48,
+                child: ElevatedButton(
                   onPressed: _logout,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    backgroundColor: _accent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: const Text('Go to Login', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('Go to Login', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
         ),
       );
     }
-    
+
     return Scaffold(
+      backgroundColor: _bg,
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black.withOpacity(0.45),
         elevation: 0,
-        title: const Text('Student Registration', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () => setState(() => _isFrameOpen = !_isFrameOpen),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _textPrimary, size: 18),
+          onPressed: _logout,
         ),
+        title: Row(children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [_accent, Color(0xFF9C63FF)]),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(Icons.school_rounded, color: Colors.white, size: 17),
+          ),
+          const SizedBox(width: 10),
+          const Text('Registration', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
+        ]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white70),
+            icon: const Icon(Icons.edit_location_alt_rounded, color: _accent, size: 22),
+            tooltip: 'Change Location',
+            onPressed: () async {
+              if (await _verifySession()) {
+                await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => EditReportPage(
+                    phone: _currentLoggedInPhone!,
+                    dob: _currentLoggedInDob!,
+                    currentLocation: selectedRoute?.name ?? '',
+                  ),
+                ));
+                if (mounted) _initializeView();
+              } else {
+                _showSessionExpiredDialog();
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: _textSecondary, size: 20),
             onPressed: _logout,
             tooltip: 'Logout',
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: _border),
+        ),
       ),
       body: Stack(
         children: [
-          // Background image
+          // ── Background image with overlay ──
           Positioned.fill(
             child: Image.network(
-              'https://thumbs.dreamstime.com/b/students-journey-knowledge-vibrant-artwork-capturing-generative-ai-319945792.jpg',
+              'https://img.freepik.com/premium-photo/group-students-walking-school-together_1204564-32168.jpg?w=1060',
               fit: BoxFit.cover,
-              loadingBuilder: (_, child, progress) =>
-                  progress == null ? child : Container(color: const Color(0xFF1a1a2e)),
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1a1a2e)),
+              errorBuilder: (_, __, ___) => Container(color: _bg),
             ),
           ),
-          // Dark overlay
-          Positioned.fill(
-            child: Container(color: Colors.black.withOpacity(0.45)),
-          ),
-          _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Colors.white))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            // Logged in badge
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(14),
-                                  margin: const EdgeInsets.only(bottom: 20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Colors.white.withOpacity(0.25)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.person_pin, color: Colors.white),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Logged in as: $_currentLoggedInPhone',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            _field(nameCtrl, 'Student Name'),
-                            _field(rollCtrl, 'Roll No'),
-                            _field(classCtrl, 'Std / Section'),
-                            _field(parentCtrl, 'Parent Name'),
-                            _field(addressCtrl, 'Address'),
-                            _field(phoneCtrl, 'Phone', readOnly: true),
-                            _field(dobCtrl, 'Date of Birth', readOnly: true),
-                            const SizedBox(height: 8),
-                            _isLoadingRoutes
-                                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                      child: DropdownButtonFormField<location_model.Route>(
-                                        value: selectedRoute,
-                                        dropdownColor: Colors.black.withOpacity(0.8),
-                                        style: const TextStyle(color: Colors.white),
-                                        iconEnabledColor: Colors.white70,
-                                        decoration: InputDecoration(
-                                          labelText: 'Location',
-                                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
-                                          prefixIcon: const Icon(Icons.location_on, color: Colors.white70, size: 20),
-                                          filled: true,
-                                          fillColor: Colors.white.withOpacity(0.08),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(14),
-                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(14),
-                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(14),
-                                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                                          ),
-                                        ),
-                                        hint: Text('Select Location', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                                        items: routes.map((r) => DropdownMenuItem<location_model.Route>(
-                                          value: r,
-                                          child: Text('${r.name} (₹${r.fee.toStringAsFixed(0)})', style: const TextStyle(color: Colors.white)),
-                                        )).toList(),
-                                        onChanged: (location_model.Route? route) {
-                                          setState(() {
-                                            selectedRoute = route;
-                                            amountCtrl.text = route?.fee.toString() ?? '';
-                                          });
-                                        },
-                                        validator: (v) => v == null ? 'Select location' : null,
-                                      ),
-                                    ),
-                                  ),
-                            const SizedBox(height: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: TextFormField(
-                                  controller: amountCtrl,
-                                  readOnly: true,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                  decoration: InputDecoration(
-                                    labelText: 'Amount',
-                                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
-                                    prefixText: '₹ ',
-                                    prefixStyle: const TextStyle(color: Colors.white),
-                                    prefixIcon: const Icon(Icons.currency_rupee, color: Colors.white70, size: 20),
-                                    filled: true,
-                                    fillColor: Colors.white.withOpacity(0.08),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: ElevatedButton(
-                                  onPressed: submit,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white.withOpacity(0.15),
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(double.infinity, 56),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: BorderSide(color: Colors.white.withOpacity(0.4)),
-                                    ),
-                                    elevation: 0,
-                                    shadowColor: Colors.transparent,
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.payment, size: 20),
-                                      SizedBox(width: 10),
-                                      Text('Pay Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-          if (_isFrameOpen)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 260,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 48),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Positioned.fill(child: Container(color: Colors.black.withOpacity(0.72))),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator(color: _accent))
+          else
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 100, 16, 40),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Menu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white70),
-                          onPressed: () => setState(() => _isFrameOpen = false),
+
+                        // ── User badge ──
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _accent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: _accent.withOpacity(0.25)),
+                          ),
+                          child: Row(children: [
+                            const Icon(Icons.verified_user_rounded, color: _accent, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Logged in as: $_currentLoggedInPhone',
+                              style: const TextStyle(color: _accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                          ]),
                         ),
+                        const SizedBox(height: 22),
+
+                        // ── Section: Personal Info ──
+                        _sectionLabel('Personal Info', Icons.person_outline_rounded),
+                        const SizedBox(height: 12),
+                        _field(nameCtrl, 'Student Name'),
+                        _field(rollCtrl, 'Roll No'),
+                        _field(classCtrl, 'Std / Section'),
+                        _field(parentCtrl, 'Parent Name'),
+                        _field(addressCtrl, 'Address'),
+
+                        const SizedBox(height: 6),
+
+                        // ── Section: Account ──
+                        _sectionLabel('Account Details', Icons.lock_outline_rounded),
+                        const SizedBox(height: 12),
+                        _field(phoneCtrl, 'Phone', readOnly: true, keyboardType: TextInputType.phone),
+                        _field(dobCtrl, 'Date of Birth', readOnly: true),
+
+                        const SizedBox(height: 6),
+
+                        // ── Section: Bus Route ──
+                        _sectionLabel('Bus Route & Fee', Icons.directions_bus_rounded),
+                        const SizedBox(height: 12),
+
+                        // Location dropdown
+                        _isLoadingRoutes
+                            ? const Center(child: CircularProgressIndicator(color: _accent))
+                            : DropdownButtonFormField<location_model.Route>(
+                                value: selectedRoute,
+                                dropdownColor: const Color(0xFF1E1E32),
+                                style: const TextStyle(color: _textPrimary, fontSize: 14),
+                                iconEnabledColor: _accent,
+                                decoration: InputDecoration(
+                                  labelText: 'Select Location',
+                                  labelStyle: const TextStyle(color: _textSecondary, fontSize: 13),
+                                  prefixIcon: const Icon(Icons.location_on_rounded, color: _accent, size: 20),
+                                  filled: true,
+                                  fillColor: _fieldBg,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: _border)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: _border)),
+                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: _accent, width: 1.8)),
+                                ),
+                                hint: const Text('Choose your stop', style: TextStyle(color: _textSecondary, fontSize: 13)),
+                                items: routes.map((r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Text('${r.name}  ·  ₹${r.fee.toStringAsFixed(0)}',
+                                    style: const TextStyle(color: _textPrimary, fontSize: 13)),
+                                )).toList(),
+                                onChanged: (r) => setState(() {
+                                  selectedRoute = r;
+                                  amountCtrl.text = r?.fee.toString() ?? '';
+                                }),
+                                validator: (v) => v == null ? 'Select a location' : null,
+                              ),
+
+                        const SizedBox(height: 14),
+
+                        // Amount display
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _accent2.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _accent2.withOpacity(0.25)),
+                          ),
+                          child: Row(children: [
+                            Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: _accent2.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: const Icon(Icons.currency_rupee_rounded, color: _accent2, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              const Text('Bus Fee Amount', style: TextStyle(color: _textSecondary, fontSize: 11, fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 2),
+                              Text(
+                                selectedRoute != null ? '₹ ${selectedRoute!.fee.toStringAsFixed(0)}' : '— Select location first',
+                                style: TextStyle(
+                                  color: selectedRoute != null ? _accent2 : _textSecondary,
+                                  fontSize: 18, fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ]),
+                          ]),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // ── Pay Now button ──
+                        SizedBox(
+                          width: double.infinity, height: 54,
+                          child: ElevatedButton(
+                            onPressed: submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 0,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.payment_rounded, color: Colors.white, size: 20),
+                                SizedBox(width: 10),
+                                Text('Pay Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.3)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: () async {
-                        if (await _verifySession()) {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditReportPage(
-                                phone: _currentLoggedInPhone!,
-                                dob: _currentLoggedInDob!,
-                                currentLocation: selectedRoute?.name ?? '',
-                              ),
-                            ),
-                          );
-                          if (mounted) _initializeView();
-                        } else {
-                          _showSessionExpiredDialog();
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.edit_location, color: Colors.white),
-                            SizedBox(width: 12),
-                            Text('Change Location', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  Widget _sectionLabel(String title, IconData icon) {
+    return Row(children: [
+      Icon(icon, color: _accent, size: 16),
+      const SizedBox(width: 7),
+      Text(title.toUpperCase(),
+        style: const TextStyle(color: _textSecondary, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+      const SizedBox(width: 10),
+      Expanded(child: Container(height: 1, color: _border)),
+    ]);
   }
 }

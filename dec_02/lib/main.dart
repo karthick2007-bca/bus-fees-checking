@@ -164,7 +164,7 @@ class _AppControllerState extends State<AppController> {
         );
       case AppView.studentRegister:
         return StudentRegisterView(
-          onBack: () => setState(() => _currentView = AppView.studentLogin),
+          onBack: () => setState(() => _currentView = AppView.landing),
           onRegisterSuccess: () {
             setState(() => _currentView = AppView.studentReport);
           },

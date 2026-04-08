@@ -526,7 +526,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               // Row 1
                               Row(
                                 children: [
-                                  _menuuyTile(icon: Icons.add_location_alt_rounded, label: 'Add Location', color: const Color(0xFF6C00FF),
+                                  _menuTile(icon: Icons.add_location_alt_rounded, label: 'Add Location', color: const Color(0xFF6C00FF),
                                     onTap: () async {
                                       setState(() => isMenuExpanded = false);
                                       final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddLocationPage()));
@@ -837,32 +837,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                               ],
                                             ),
                                           ),
-                                          // Edit button
-                                          GestureDetector(
-                                            onTap: () async {
-                                              setState(() => _longPressedLocationId = null);
-                                              final result = await Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => EditLocationPage(
-                                                    locationId: location['id'],
-                                                    locationName: location['name'],
-                                                    currentFee: (location['fee'] as num).toDouble(),
-                                                  ),
-                                                ),
-                                              );
-                                              if (result == true) _loadLocations();
-                                            },
-                                            child: Container(
-                                              width: 38, height: 38,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(11),
-                                                border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
-                                              ),
-                                              child: Icon(Icons.edit_rounded, color: Colors.white.withOpacity(0.8), size: 17),
-                                            ),
-                                          ),
+
                                         ],
                                       ),
                                     ),
@@ -1181,41 +1156,53 @@ class EditLocationPage extends StatefulWidget {
 }
 
 class _EditLocationPageState extends State<EditLocationPage> {
+  late TextEditingController nameController;
   late TextEditingController feeController;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    feeController = TextEditingController(text: widget.currentFee.toString());
+    nameController = TextEditingController(text: widget.locationName);
+    feeController = TextEditingController(text: widget.currentFee.toStringAsFixed(0));
   }
 
   @override
   void dispose() {
+    nameController.dispose();
     feeController.dispose();
     super.dispose();
   }
 
-  Future<void> _updateFee() async {
-    if (feeController.text.isEmpty) return;
-    final newFee = double.tryParse(feeController.text);
-    if (newFee == null) return;
+  Future<void> _update() async {
+    final newName = nameController.text.trim();
+    final newFee = double.tryParse(feeController.text.trim());
+    if (newName.isEmpty || newFee == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields correctly'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
     try {
-      await ApiService.updateLocation(widget.locationId, widget.locationName, newFee);
-
-      // Update totalDue for all students in this location
+      await ApiService.updateLocation(widget.locationId, newName, newFee);
+      // Update totalDue & location name for all students in this location
       final students = await ApiService.getStudents();
       for (final s in students) {
         if (s['location']?.toString() == widget.locationName) {
           final phone = s['phone']?.toString() ?? '';
           if (phone.isNotEmpty) {
-            await ApiService.updateStudent(phone, {...Map<String, dynamic>.from(s), 'totalDue': newFee});
+            await ApiService.updateStudent(phone, {
+              ...Map<String, dynamic>.from(s),
+              'location': newName,
+              'totalDue': newFee,
+            });
           }
         }
       }
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fee updated for location & all students!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Location updated successfully!'), backgroundColor: Colors.green),
         );
         Navigator.pop(context, true);
       }
@@ -1225,66 +1212,244 @@ class _EditLocationPageState extends State<EditLocationPage> {
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  InputDecoration _glassDec(String label, IconData icon, Color accent) => InputDecoration(
+    labelText: label,
+    labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+    prefixIcon: Container(
+      margin: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Icon(icon, color: accent, size: 17),
+    ),
+    filled: true,
+    fillColor: Colors.white.withOpacity(0.06),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.12))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.12))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: accent, width: 1.5)),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Edit Location Fee', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+      backgroundColor: const Color(0xFF060818),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 30, offset: const Offset(0, 10))],
+                color: Colors.white.withOpacity(0.05),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 1)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.locationName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: feeController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Fee Amount',
-                      prefixText: '₹ ',
-                      prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF4F46E5)),
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
-                    ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF6C00FF), Color(0xFF0066FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [BoxShadow(color: const Color(0xFF6C00FF).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                        ),
+                        child: const Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Edit Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.14)),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 15),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 28),
-                  ElevatedButton(
-                    onPressed: _updateFee,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Update Fee', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         ),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFF060818), Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          Positioned(top: -80, left: -80,
+            child: Container(width: 260, height: 260,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [const Color(0xFF6C00FF).withOpacity(0.2), Colors.transparent])))),
+          Positioned(bottom: -60, right: -60,
+            child: Container(width: 220, height: 220,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [const Color(0xFF0066FF).withOpacity(0.14), Colors.transparent])))),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      width: 68, height: 68,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF6C00FF), Color(0xFF0066FF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [BoxShadow(color: const Color(0xFF6C00FF).withOpacity(0.45), blurRadius: 22, offset: const Offset(0, 8))],
+                      ),
+                      child: const Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('Edit Bus Location', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                    const SizedBox(height: 4),
+                    Text('Update name and fee for this route', style: TextStyle(color: Colors.white.withOpacity(0.38), fontSize: 12)),
+                    const SizedBox(height: 28),
+
+                    // Info banner — current values
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6C00FF).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF6C00FF).withOpacity(0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, color: Color(0xFF6C00FF), size: 16),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Editing: ${widget.locationName}  •  ₹${widget.currentFee.toStringAsFixed(0)}',
+                                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Form card
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.11), width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Location Name
+                              Text('Location Name', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: nameController,
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                decoration: _glassDec('e.g. Coimbatore North', Icons.location_on_rounded, const Color(0xFF6C00FF)),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // Fee
+                              Text('Bus Fee Amount', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: feeController,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                decoration: _glassDec('e.g. 2500', Icons.currency_rupee_rounded, const Color(0xFF10B981)),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Impact note
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.22)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 15),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'This will update the fee for all students assigned to this location.',
+                                        style: TextStyle(color: const Color(0xFFF59E0B).withOpacity(0.85), fontSize: 11, height: 1.4),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Save button
+                              GestureDetector(
+                                onTap: _isLoading ? null : _update,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(colors: [Color(0xFF6C00FF), Color(0xFF0066FF)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [BoxShadow(color: const Color(0xFF6C00FF).withOpacity(0.4), blurRadius: 18, offset: const Offset(0, 6))],
+                                  ),
+                                  child: _isLoading
+                                      ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)))
+                                      : const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                                            SizedBox(width: 10),
+                                            Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.2)),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4021,69 +4186,284 @@ class _EditStudentPageState extends State<EditStudentPage> {
     }
   }
 
-  Widget _editField(TextEditingController ctrl, String label, IconData icon) => Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: TextField(
-      controller: ctrl,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF4F46E5)),
-        filled: true,
-        fillColor: const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2)),
+  InputDecoration _glassDec(String label, IconData icon, Color accent) => InputDecoration(
+    labelText: label,
+    labelStyle: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 13),
+    prefixIcon: Container(
+      margin: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(9),
       ),
+      child: Icon(icon, color: accent, size: 17),
     ),
+    filled: true,
+    fillColor: Colors.white.withOpacity(0.06),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.12))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.white.withOpacity(0.12))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: accent, width: 1.5)),
   );
 
   @override
   Widget build(BuildContext context) {
+    // Accent colors per field
+    final fieldAccents = [
+      const Color(0xFF6C00FF),
+      const Color(0xFF0EA5E9),
+      const Color(0xFF10B981),
+      const Color(0xFF8B5CF6),
+      const Color(0xFFF59E0B),
+      const Color(0xFFEC4899),
+      const Color(0xFF00CCFF),
+    ];
+    final fields = [
+      (nameController,       'Full Name',    Icons.person_rounded,         fieldAccents[0]),
+      (rollNoController,     'Roll Number',  Icons.badge_rounded,          fieldAccents[1]),
+      (classController,      'Class',        Icons.school_rounded,         fieldAccents[2]),
+      (parentNameController, 'Parent Name',  Icons.family_restroom_rounded, fieldAccents[3]),
+      (phoneController,      'Phone',        Icons.phone_rounded,          fieldAccents[4]),
+      (emailController,      'Email',        Icons.email_rounded,          fieldAccents[5]),
+      (addressController,    'Address',      Icons.home_rounded,           fieldAccents[6]),
+    ];
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Edit Student', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-        iconTheme: const IconThemeData(color: Color(0xFF4F46E5)),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+      backgroundColor: const Color(0xFF060818),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 30, offset: const Offset(0, 10))],
+                color: Colors.white.withOpacity(0.05),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 1)),
               ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                        ),
+                        child: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Edit Student', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.14)),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFF060818), Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          // Glow orbs
+          Positioned(top: -80, left: -80,
+            child: Container(width: 260, height: 260,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [const Color(0xFF10B981).withOpacity(0.18), Colors.transparent])))),
+          Positioned(bottom: -60, right: -60,
+            child: Container(width: 220, height: 220,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [const Color(0xFF6C00FF).withOpacity(0.14), Colors.transparent])))),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
               child: Column(
                 children: [
-                  _editField(nameController, 'Name', Icons.person),
-                  _editField(rollNoController, 'Roll Number', Icons.badge),
-                  _editField(classController, 'Class', Icons.school),
-                  _editField(parentNameController, 'Parent Name', Icons.family_restroom),
-                  _editField(phoneController, 'Phone', Icons.phone),
-                  _editField(emailController, 'Email', Icons.email),
-                  _editField(addressController, 'Address', Icons.home),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: _updateStudent,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
+                  // Header
+                  Container(
+                    width: 68, height: 68,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.45), blurRadius: 22, offset: const Offset(0, 8))],
                     ),
-                    child: const Text('Update Student', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Edit Student Info', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                  const SizedBox(height: 4),
+                  Text('Update the student details below', style: TextStyle(color: Colors.white.withOpacity(0.38), fontSize: 12)),
+                  const SizedBox(height: 24),
+
+                  // Student info banner
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.09),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.person_pin_rounded, color: Color(0xFF10B981), size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.student['name']?.toString().isNotEmpty == true
+                                        ? widget.student['name']
+                                        : widget.student['phone'] ?? 'Student',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Phone: ${widget.student['phone'] ?? 'N/A'}  •  ${widget.student['location']?.toString().isNotEmpty == true ? widget.student['location'] : 'No location'}',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: widget.student['status'] == 'succeed'
+                                    ? const Color(0xFF10B981).withOpacity(0.18)
+                                    : const Color(0xFFF59E0B).withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: widget.student['status'] == 'succeed'
+                                      ? const Color(0xFF10B981).withOpacity(0.35)
+                                      : const Color(0xFFF59E0B).withOpacity(0.35),
+                                ),
+                              ),
+                              child: Text(
+                                widget.student['status'] == 'succeed' ? 'Paid' : 'Pending',
+                                style: TextStyle(
+                                  color: widget.student['status'] == 'succeed' ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                  fontSize: 10, fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Form card
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white.withOpacity(0.11), width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Section label
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 28, height: 28,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6C00FF).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.edit_note_rounded, color: Color(0xFF6C00FF), size: 15),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('Student Details', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.4)),
+                                ],
+                              ),
+                            ),
+                            // All fields
+                            ...List.generate(fields.length, (i) {
+                              final (ctrl, label, icon, accent) = fields[i];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: TextField(
+                                  controller: ctrl,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                  decoration: _glassDec(label, icon, accent),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 8),
+                            // Save button
+                            GestureDetector(
+                              onTap: _updateStudent,
+                              child: Container(
+                                width: double.infinity,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 18, offset: const Offset(0, 6))],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                                    SizedBox(width: 10),
+                                    Text('Update Student', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.2)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
