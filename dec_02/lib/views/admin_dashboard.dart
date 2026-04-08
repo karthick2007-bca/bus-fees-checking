@@ -2855,24 +2855,6 @@ class _LocationStudentsPageState extends State<LocationStudentsPage> {
                                                 ],
                                               ),
                                             ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: accent.withOpacity(0.14),
-                                                borderRadius: BorderRadius.circular(9),
-                                                border: Border.all(color: accent.withOpacity(0.3)),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(Icons.currency_rupee_rounded, color: accent, size: 11),
-                                                  Text(
-                                                    '${student['totalDue'] ?? 0}',
-                                                    style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ),
