@@ -87,19 +87,30 @@ class _EditReportPageState extends State<EditReportPage> {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
     try {
-      // Fetch full student data first so we don't overwrite existing fields
+      // Fetch full student data — try phone+dob first, fallback to phone only
       final students = await ApiService.getStudents();
-      final existing = students.firstWhere(
-        (s) => s['phone']?.toString() == widget.phone &&
-               s['dob']?.toString().split('T')[0] == widget.dob,
+
+      Map<String, dynamic> existing = students.firstWhere(
+        (s) =>
+            s['phone']?.toString() == widget.phone &&
+            s['dob']?.toString().split('T')[0] == widget.dob,
         orElse: () => <String, dynamic>{},
       );
 
+      // Fallback: match by phone alone if dob match failed or returned empty
+      if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
+        existing = students.firstWhere(
+          (s) => s['phone']?.toString() == widget.phone,
+          orElse: () => <String, dynamic>{},
+        );
+      }
+
+      // Merge — only overwrite location/payment fields, keep all personal details
       final updatedData = Map<String, dynamic>.from(existing);
-      updatedData['location']   = newLocation!.name;
-      updatedData['amountPaid'] = newLocation!.fee;
-      updatedData['totalDue']   = 0;
-      updatedData['status']     = 'succeed';
+      updatedData['location']    = newLocation!.name;
+      updatedData['amountPaid']  = newLocation!.fee;
+      updatedData['totalDue']    = 0;
+      updatedData['status']      = 'succeed';
       updatedData['lastUpdated'] = DateTime.now().toIso8601String();
 
       await ApiService.updateStudent(widget.phone, updatedData);
@@ -108,53 +119,61 @@ class _EditReportPageState extends State<EditReportPage> {
       final now = DateTime.now().toIso8601String();
 
       await ApiService.saveTransaction({
-        'paymentId': paymentId,
-        'orderId': response['orderId']?.toString() ?? '',
-        'studentId': widget.phone,
+        'paymentId':   paymentId,
+        'orderId':     response['orderId']?.toString() ?? '',
+        'studentId':   widget.phone,
         'studentName': updatedData['name'] ?? '',
-        'amount': totalAmount,
-        'status': 'success',
-        'type': 'location_change',
-        'timestamp': now,
+        'amount':      totalAmount,
+        'status':      'success',
+        'type':        'location_change',
+        'timestamp':   now,
       });
 
-      // Save updated report with full student details
+      // Save report — explicitly pull every personal field from updatedData
       await ApiService.saveReport({
-        'phone': widget.phone,
-        'name': updatedData['name'] ?? '',
-        'rollNo': updatedData['rollNo'] ?? '',
+        'phone':        updatedData['phone']        ?? widget.phone,
+        'name':         updatedData['name']         ?? '',
+        'rollNo':       updatedData['rollNo']       ?? '',
         'studentClass': updatedData['studentClass'] ?? '',
-        'parentName': updatedData['parentName'] ?? '',
-        'address': updatedData['address'] ?? '',
-        'location': newLocation!.name,
-        'dob': widget.dob,
-        'totalDue': 0,
-        'amountPaid': newLocation!.fee,
-        'status': 'succeed',
-        'paymentId': paymentId,
-        'paymentDate': now,
-        'generatedAt': now,
+        'parentName':   updatedData['parentName']   ?? '',
+        'address':      updatedData['address']      ?? '',
+        'location':     newLocation!.name,
+        'dob':          updatedData['dob']?.toString().split('T')[0] ?? widget.dob,
+        'totalDue':     0,
+        'amountPaid':   newLocation!.fee,
+        'status':       'succeed',
+        'paymentId':    paymentId,
+        'paymentDate':  now,
+        'generatedAt':  now,
       });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location updated successfully! ✅'),
-            backgroundColor: Colors.green, duration: Duration(seconds: 2)));
+        const SnackBar(
+          content: Text('Location updated successfully! ✅'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
 
-      Navigator.pushReplacement(context, MaterialPageRoute(
-        builder: (_) => StudentReport(
-          phone: widget.phone,
-          dob: widget.dob,
-          onLogout: () => Navigator.pop(context),
-          initialData: updatedData,
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentReport(
+            phone: widget.phone,
+            dob: widget.dob,
+            onLogout: () => Navigator.pop(context),
+            initialData: updatedData,
+          ),
         ),
-      ));
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
@@ -177,8 +196,80 @@ class _EditReportPageState extends State<EditReportPage> {
         const SnackBar(content: Text('New location must be different'), backgroundColor: Colors.orange));
       return;
     }
+    // Same fee — no payment needed, update directly
+    if (totalAmount == 0) {
+      _updateLocationWithoutPayment();
+      return;
+    }
     _paymentService.openCheckout(
       amount: totalAmount, name: 'Location Change', phone: widget.phone, email: '');
+  }
+
+  Future<void> _updateLocationWithoutPayment() async {
+    setState(() => _isProcessing = true);
+    try {
+      final students = await ApiService.getStudents();
+      Map<String, dynamic> existing = students.firstWhere(
+        (s) =>
+            s['phone']?.toString() == widget.phone &&
+            s['dob']?.toString().split('T')[0] == widget.dob,
+        orElse: () => <String, dynamic>{},
+      );
+      if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
+        existing = students.firstWhere(
+          (s) => s['phone']?.toString() == widget.phone,
+          orElse: () => <String, dynamic>{},
+        );
+      }
+
+      final updatedData = Map<String, dynamic>.from(existing);
+      updatedData['location']    = newLocation!.name;
+      updatedData['lastUpdated'] = DateTime.now().toIso8601String();
+
+      await ApiService.updateStudent(widget.phone, updatedData);
+
+      final now = DateTime.now().toIso8601String();
+      await ApiService.saveReport({
+        'phone':        updatedData['phone']        ?? widget.phone,
+        'name':         updatedData['name']         ?? '',
+        'rollNo':       updatedData['rollNo']       ?? '',
+        'studentClass': updatedData['studentClass'] ?? '',
+        'parentName':   updatedData['parentName']   ?? '',
+        'address':      updatedData['address']      ?? '',
+        'location':     newLocation!.name,
+        'dob':          updatedData['dob']?.toString().split('T')[0] ?? widget.dob,
+        'totalDue':     0,
+        'amountPaid':   updatedData['amountPaid'] ?? 0,
+        'status':       updatedData['status'] ?? 'succeed',
+        'paymentId':    updatedData['lastPaymentId'] ?? '',
+        'paymentDate':  updatedData['lastPaymentDate'] ?? now,
+        'generatedAt':  now,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location updated successfully! ✅'),
+            backgroundColor: Colors.green, duration: Duration(seconds: 2)));
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentReport(
+            phone: widget.phone,
+            dob: widget.dob,
+            onLogout: () => Navigator.pop(context),
+            initialData: updatedData,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   InputDecoration _dropdownDec(String label) => InputDecoration(
@@ -341,9 +432,9 @@ class _EditReportPageState extends State<EditReportPage> {
                         SizedBox(
                           width: double.infinity, height: 54,
                           child: ElevatedButton(
-                            onPressed: (_isProcessing || totalAmount == 0) ? null : handlePay,
+                            onPressed: _isProcessing ? null : handlePay,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: totalAmount > 0 ? _accent : _border,
+                              backgroundColor: _accent,
                               disabledBackgroundColor: _border,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               elevation: 0,
@@ -355,7 +446,7 @@ class _EditReportPageState extends State<EditReportPage> {
                                     const Icon(Icons.payment_rounded, color: Colors.white, size: 20),
                                     const SizedBox(width: 10),
                                     Text(
-                                      totalAmount > 0 ? 'Pay  ₹${totalAmount.toStringAsFixed(0)}' : 'No Payment Required',
+                                      totalAmount > 0 ? 'Pay  ₹${totalAmount.toStringAsFixed(0)}' : 'Update Location',
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                                     ),
                                   ]),
