@@ -104,6 +104,19 @@ class ApiService {
     throw Exception('Failed to load reports');
   }
 
+  static Future<List<dynamic>> getReportsByPhone(String phone) async {
+    final uri = Uri.parse('$baseUrl/api/reports').replace(queryParameters: {
+      'phone': phone,
+      't': DateTime.now().millisecondsSinceEpoch.toString(),
+    });
+    final response = await http.get(uri, headers: _headers).timeout(timeout);
+    if (response.statusCode == 200) {
+      final all = jsonDecode(response.body) as List;
+      return all.where((r) => r['phone']?.toString() == phone).toList();
+    }
+    throw Exception('Failed to load reports');
+  }
+
   // --- 4. TRANSACTIONS ---
   static Future<void> saveTransaction(Map<String, dynamic> transaction) async {
     await http.post(Uri.parse('$baseUrl/api/transactions'), headers: _headers, body: jsonEncode(transaction)).timeout(timeout);
