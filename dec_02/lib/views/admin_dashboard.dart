@@ -1185,7 +1185,7 @@ class _EditLocationPageState extends State<EditLocationPage> {
     }
     setState(() => _isLoading = true);
     try {
-      await ApiService.updateLocation(widget.locationId, newName, newFee);
+      await ApiService.updateLocation(widget.locationId, widget.locationName, newName, newFee);
       // Update totalDue & location name for all students in this location
       final students = await ApiService.getStudents();
       for (final s in students) {
@@ -5303,10 +5303,7 @@ class _AllLocationsPageState extends State<AllLocationsPage> {
     try {
       final locations = await ApiService.getLocations();
       setState(() {
-        _locations = locations.map((loc) => {
-          ...loc,
-          'id': (loc['_id'] ?? loc['id'])?.toString() ?? '',
-        }).toList();
+        _locations = locations.map((loc) { final m = Map<String, dynamic>.from(loc); m['id'] = (loc['_id'] ?? loc['id'])?.toString() ?? ''; m['fee'] = (loc['fee'] as num?)?.toDouble() ?? 0.0; return m; }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -5321,7 +5318,7 @@ class _AllLocationsPageState extends State<AllLocationsPage> {
         builder: (context) => EditLocationPage(
           locationId: location['id'],
           locationName: location['name'],
-          currentFee: location['fee'].toDouble(),
+          currentFee: (location['fee'] as num?)?.toDouble() ?? 0.0,
         ),
       ),
     );

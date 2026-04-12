@@ -87,30 +87,68 @@ class _EditReportPageState extends State<EditReportPage> {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
     try {
-      await ApiService.updateStudent(widget.phone, {
-        'location': newLocation!.name,
-        'amountPaid': newLocation!.fee,
-      });
+      // Fetch full student data first so we don't overwrite existing fields
+      final students = await ApiService.getStudents();
+      final existing = students.firstWhere(
+        (s) => s['phone']?.toString() == widget.phone &&
+               s['dob']?.toString().split('T')[0] == widget.dob,
+        orElse: () => <String, dynamic>{},
+      );
+
+      final updatedData = Map<String, dynamic>.from(existing);
+      updatedData['location']   = newLocation!.name;
+      updatedData['amountPaid'] = newLocation!.fee;
+      updatedData['totalDue']   = 0;
+      updatedData['status']     = 'succeed';
+      updatedData['lastUpdated'] = DateTime.now().toIso8601String();
+
+      await ApiService.updateStudent(widget.phone, updatedData);
+
+      final paymentId = response['paymentId']?.toString() ?? '';
+      final now = DateTime.now().toIso8601String();
+
       await ApiService.saveTransaction({
-        'paymentId': response['paymentId']?.toString() ?? '',
+        'paymentId': paymentId,
         'orderId': response['orderId']?.toString() ?? '',
         'studentId': widget.phone,
-        'studentName': 'Location Change',
+        'studentName': updatedData['name'] ?? '',
         'amount': totalAmount,
         'status': 'success',
         'type': 'location_change',
-        'timestamp': DateTime.now().toIso8601String(),
+        'timestamp': now,
       });
+
+      // Save updated report with full student details
+      await ApiService.saveReport({
+        'phone': widget.phone,
+        'name': updatedData['name'] ?? '',
+        'rollNo': updatedData['rollNo'] ?? '',
+        'studentClass': updatedData['studentClass'] ?? '',
+        'parentName': updatedData['parentName'] ?? '',
+        'address': updatedData['address'] ?? '',
+        'location': newLocation!.name,
+        'dob': widget.dob,
+        'totalDue': 0,
+        'amountPaid': newLocation!.fee,
+        'status': 'succeed',
+        'paymentId': paymentId,
+        'paymentDate': now,
+        'generatedAt': now,
+      });
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Location updated successfully! ✅'),
             backgroundColor: Colors.green, duration: Duration(seconds: 2)));
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
+
       Navigator.pushReplacement(context, MaterialPageRoute(
         builder: (_) => StudentReport(
-          phone: widget.phone, dob: widget.dob,
+          phone: widget.phone,
+          dob: widget.dob,
           onLogout: () => Navigator.pop(context),
+          initialData: updatedData,
         ),
       ));
     } catch (e) {

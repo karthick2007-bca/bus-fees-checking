@@ -35,7 +35,7 @@ class _LandingViewState extends State<LandingView> {
           // Original background image
           Positioned.fill(
             child: Image.network(
-              'https://5.imimg.com/data5/SELLER/Default/2021/2/IC/ZO/OY/3332884/led-sign-board-1000x1000.jpg',
+              'https://tse2.mm.bing.net/th/id/OIP.L32q33bi_AI7pxKoCORufgHaE6?rs=1&pid=ImgDetMain&o=7&rm=3',
               headers: const {'User-Agent': 'Mozilla/5.0'},
               fit: BoxFit.cover,
               errorBuilder: (context, error, stack) => Container(

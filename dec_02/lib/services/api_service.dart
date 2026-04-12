@@ -76,9 +76,15 @@ class ApiService {
     await http.post(Uri.parse('$baseUrl/api/locations'), headers: _headers, body: jsonEncode(location)).timeout(timeout);
   }
 
-  static Future<void> updateLocation(String id, String name, double fee) async {
-    await http.put(Uri.parse('$baseUrl/api/locations/$id'),
-        headers: _headers, body: jsonEncode({'name': name, 'fee': fee})).timeout(timeout);
+  static Future<void> updateLocation(String id, String oldName, String newName, double fee) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/locations/${Uri.encodeComponent(id)}'),
+      headers: _headers,
+      body: jsonEncode({'name': newName, 'fee': fee, 'oldName': oldName}),
+    ).timeout(timeout);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Update failed: ${response.statusCode}');
+    }
   }
 
   static Future<void> deleteLocation(String id) async {

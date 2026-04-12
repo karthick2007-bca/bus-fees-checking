@@ -87,6 +87,43 @@ app.post('/api/locations', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.put('/api/locations/:id', async (req, res) => {
+  try {
+    const db = await connectToDatabase();
+    const { name, fee } = req.body;
+    let matched = 0;
+
+    // 1. Try MongoDB ObjectId
+    try {
+      const r = await db.collection('locations').updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { name, fee } }
+      );
+      matched = r.matchedCount;
+    } catch (_) {}
+
+    // 2. Try custom string id
+    if (matched === 0) {
+      const r = await db.collection('locations').updateOne(
+        { id: req.params.id },
+        { $set: { name, fee } }
+      );
+      matched = r.matchedCount;
+    }
+
+    // 3. Try by current name (sent as oldName in body)
+    if (matched === 0 && req.body.oldName) {
+      const r = await db.collection('locations').updateOne(
+        { name: req.body.oldName },
+        { $set: { name, fee } }
+      );
+      matched = r.matchedCount;
+    }
+
+    res.json({ success: true, matched });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/locations/:id', async (req, res) => {
   try {
     const db = await connectToDatabase();
