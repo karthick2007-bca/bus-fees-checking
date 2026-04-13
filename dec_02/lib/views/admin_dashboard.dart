@@ -4886,7 +4886,10 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
   late TabController _tabController;
   List<dynamic> _paidStudents = [];
   List<dynamic> _unpaidStudents = [];
+  List<dynamic> _filteredPaid = [];
+  List<dynamic> _filteredUnpaid = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -4898,6 +4901,7 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -4905,13 +4909,34 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
     try {
       final students = await ApiService.getStudents();
       setState(() {
-        _paidStudents = students.where((s) => s['status'] == 'succeed').toList();
+        _paidStudents   = students.where((s) => s['status'] == 'succeed').toList();
         _unpaidStudents = students.where((s) => s['status'] != 'succeed').toList();
+        _filteredPaid   = _paidStudents;
+        _filteredUnpaid = _unpaidStudents;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _onSearch(String query) {
+    final q = query.toLowerCase().trim();
+    setState(() {
+      if (q.isEmpty) {
+        _filteredPaid   = _paidStudents;
+        _filteredUnpaid = _unpaidStudents;
+      } else {
+        bool _match(s) =>
+            (s['name']         ?? '').toString().toLowerCase().contains(q) ||
+            (s['phone']        ?? '').toString().toLowerCase().contains(q) ||
+            (s['rollNo']       ?? '').toString().toLowerCase().contains(q) ||
+            (s['studentClass'] ?? '').toString().toLowerCase().contains(q) ||
+            (s['location']     ?? '').toString().toLowerCase().contains(q);
+        _filteredPaid   = _paidStudents.where(_match).toList();
+        _filteredUnpaid = _unpaidStudents.where(_match).toList();
+      }
+    });
   }
 
   Widget _buildStudentCard(Map<String, dynamic> student, bool isPaid, int index) {
@@ -5268,6 +5293,52 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
                 ),
                 const SizedBox(height: 10),
 
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: _onSearch,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            hintText: 'Search by name, phone, roll, class, location...',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.28), fontSize: 12),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(9),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.search_rounded, color: Color(0xFF10B981), size: 16),
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? GestureDetector(
+                                    onTap: () {
+                                      _searchController.clear();
+                                      _onSearch('');
+                                    },
+                                    child: Icon(Icons.close_rounded, color: Colors.white.withOpacity(0.4), size: 16),
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 // List
                 Expanded(
                   child: _isLoading
@@ -5275,19 +5346,23 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
                       : TabBarView(
                           controller: _tabController,
                           children: [
-                            _paidStudents.isEmpty
-                                ? _emptyState('No paid students yet', Icons.check_circle_outline_rounded, const Color(0xFF10B981))
+                            _filteredPaid.isEmpty
+                                ? _emptyState(
+                                    _searchController.text.isNotEmpty ? 'No results found' : 'No paid students yet',
+                                    Icons.check_circle_outline_rounded, const Color(0xFF10B981))
                                 : ListView.builder(
                                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                                    itemCount: _paidStudents.length,
-                                    itemBuilder: (context, index) => _buildStudentCard(_paidStudents[index], true, index),
+                                    itemCount: _filteredPaid.length,
+                                    itemBuilder: (context, index) => _buildStudentCard(_filteredPaid[index], true, index),
                                   ),
-                            _unpaidStudents.isEmpty
-                                ? _emptyState('All students have paid!', Icons.celebration_rounded, const Color(0xFF10B981))
+                            _filteredUnpaid.isEmpty
+                                ? _emptyState(
+                                    _searchController.text.isNotEmpty ? 'No results found' : 'All students have paid!',
+                                    Icons.celebration_rounded, const Color(0xFF10B981))
                                 : ListView.builder(
                                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                                    itemCount: _unpaidStudents.length,
-                                    itemBuilder: (context, index) => _buildStudentCard(_unpaidStudents[index], false, index),
+                                    itemCount: _filteredUnpaid.length,
+                                    itemBuilder: (context, index) => _buildStudentCard(_filteredUnpaid[index], false, index),
                                   ),
                           ],
                         ),

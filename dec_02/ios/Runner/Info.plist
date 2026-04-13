@@ -60,5 +60,11 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Required to pick files for student data upload</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Required to access documents for file upload</string>
+	<key>NSFileProviderDomainUsageDescription</key>
+	<string>Required to access files for upload</string>
 </dict>
 </plist>

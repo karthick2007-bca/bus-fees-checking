@@ -4,7 +4,6 @@ import '../services/api_service.dart';
 import '../services/payment_service.dart';
 import '../models/location.dart' as location_model;
 import 'student_report.dart';
-import 'edit_report_page.dart';
 
 class StudentRegisterView extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -435,24 +434,6 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
           const Text('Registration', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w800, fontSize: 16)),
         ]),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_location_alt_rounded, color: _accent, size: 22),
-            tooltip: 'Change Location',
-            onPressed: () async {
-              if (await _verifySession()) {
-                await Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => EditReportPage(
-                    phone: _currentLoggedInPhone!,
-                    dob: _currentLoggedInDob!,
-                    currentLocation: selectedRoute?.name ?? '',
-                  ),
-                ));
-                if (mounted) _initializeView();
-              } else {
-                _showSessionExpiredDialog();
-              }
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: _textSecondary, size: 20),
             onPressed: _logout,
