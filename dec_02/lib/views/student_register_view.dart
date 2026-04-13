@@ -167,45 +167,88 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
   void _handlePaymentSuccess(dynamic response) async {
     try {
       if (!await _verifySession()) { _showSessionExpiredDialog(); return; }
-      final capturedName = nameCtrl.text;
-      final capturedRoll = rollCtrl.text;
-      final capturedClass = classCtrl.text;
-      final capturedParent = parentCtrl.text;
-      final capturedAddress = addressCtrl.text;
-      final capturedPhone = _currentLoggedInPhone;
-      final capturedDob = _currentLoggedInDob;
+      // Capture the latest field values at payment time
+      final capturedName    = nameCtrl.text.trim();
+      final capturedRoll    = rollCtrl.text.trim();
+      final capturedClass   = classCtrl.text.trim();
+      final capturedParent  = parentCtrl.text.trim();
+      final capturedAddress = addressCtrl.text.trim();
+      final capturedPhone   = _currentLoggedInPhone;
+      final capturedDob     = _currentLoggedInDob;
       final capturedLocation = selectedRoute?.name ?? '';
-      final capturedAmount = selectedRoute?.fee ?? 0;
+      final capturedAmount   = selectedRoute?.fee ?? 0;
+
       await _saveStudent(fromPayment: true);
+
       final paymentId = response['paymentId']?.toString() ?? '';
       final now = DateTime.now().toIso8601String();
+
       await ApiService.saveTransaction({
         'paymentId': paymentId, 'orderId': response['orderId']?.toString() ?? '',
         'studentId': capturedPhone, 'studentName': capturedName,
         'phone': capturedPhone, 'rollNo': capturedRoll,
         'amount': capturedAmount, 'status': 'success', 'timestamp': now,
       });
-      await ApiService.saveReport({
-        'phone': capturedPhone, 'name': capturedName, 'rollNo': capturedRoll,
-        'studentClass': capturedClass, 'parentName': capturedParent,
-        'address': capturedAddress, 'location': capturedLocation, 'dob': capturedDob,
-        'totalDue': 0, 'amountPaid': capturedAmount, 'status': 'succeed',
-        'paymentId': paymentId, 'paymentDate': now, 'generatedAt': now,
-      });
+
+      final reportData = {
+        'phone':        capturedPhone,
+        'name':         capturedName,
+        'rollNo':       capturedRoll,
+        'studentClass': capturedClass,
+        'parentName':   capturedParent,
+        'address':      capturedAddress,
+        'location':     capturedLocation,
+        'dob':          capturedDob,
+        'totalDue':     0,
+        'amountPaid':   capturedAmount,
+        'status':       'succeed',
+        'paymentId':    paymentId,
+        'paymentDate':  now,
+        'generatedAt':  now,
+      };
+
+      // Save new report with latest details
+      await ApiService.saveReport(reportData);
+
+      // Also update any existing reports for this phone so old reports
+      // reflect the latest personal details (name, class, address, etc.)
+      try {
+        await ApiService.updateReportByPhone(capturedPhone!, {
+          'name':         capturedName,
+          'rollNo':       capturedRoll,
+          'studentClass': capturedClass,
+          'parentName':   capturedParent,
+          'address':      capturedAddress,
+        });
+      } catch (_) {}
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment Successful! ✅'), backgroundColor: Colors.green));
-      Navigator.pushAndRemoveUntil(context,
-        MaterialPageRoute(builder: (context) => StudentReport(
-          phone: capturedPhone!, dob: capturedDob!, onLogout: () => _logout(),
-          initialData: {
-            'name': capturedName, 'rollNo': capturedRoll, 'studentClass': capturedClass,
-            'parentName': capturedParent, 'address': capturedAddress,
-            'phone': capturedPhone, 'dob': capturedDob, 'location': capturedLocation,
-            'amountPaid': capturedAmount, 'totalDue': 0, 'status': 'succeed',
-            'paymentId': paymentId, 'paymentDate': now,
-          },
-        )), (route) => false);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentReport(
+            phone: capturedPhone!, dob: capturedDob!, onLogout: () => _logout(),
+            initialData: {
+              'name':         capturedName,
+              'rollNo':       capturedRoll,
+              'studentClass': capturedClass,
+              'parentName':   capturedParent,
+              'address':      capturedAddress,
+              'phone':        capturedPhone,
+              'dob':          capturedDob,
+              'location':     capturedLocation,
+              'amountPaid':   capturedAmount,
+              'totalDue':     0,
+              'status':       'succeed',
+              'paymentId':    paymentId,
+              'paymentDate':  now,
+            },
+          ),
+        ),
+        (route) => false,
+      );
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
@@ -228,17 +271,33 @@ class _StudentRegisterViewState extends State<StudentRegisterView> {
                s['dob']?.toString().split('T')[0] == _currentLoggedInDob,
         orElse: () => null,
       );
-      await ApiService.addStudent({
-        'id': existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        'name': nameCtrl.text, 'rollNo': rollCtrl.text, 'studentClass': classCtrl.text,
-        'parentName': parentCtrl.text, 'location': selectedRoute?.name ?? '',
-        'totalDue': 0, 'amountPaid': selectedRoute?.fee ?? 0, 'status': 'succeed',
-        'address': addressCtrl.text, 'phone': _currentLoggedInPhone, 'dob': _currentLoggedInDob,
+
+      final updatedData = {
+        'id':               existingStudent?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        'name':             nameCtrl.text.trim(),
+        'rollNo':           rollCtrl.text.trim(),
+        'studentClass':     classCtrl.text.trim(),
+        'parentName':       parentCtrl.text.trim(),
+        'address':          addressCtrl.text.trim(),
+        'location':         selectedRoute?.name ?? '',
+        'totalDue':         0,
+        'amountPaid':       selectedRoute?.fee ?? 0,
+        'status':           'succeed',
+        'phone':            _currentLoggedInPhone,
+        'dob':              _currentLoggedInDob,
         'registrationDate': existingStudent?['registrationDate'] ?? DateTime.now().toIso8601String(),
-        'lastUpdated': DateTime.now().toIso8601String(),
-        'payments': existingStudent?['payments'] ?? [],
-        'locationHistory': existingStudent?['locationHistory'] ?? [],
-      });
+        'lastUpdated':      DateTime.now().toIso8601String(),
+        'payments':         existingStudent?['payments'] ?? [],
+        'locationHistory':  existingStudent?['locationHistory'] ?? [],
+      };
+
+      if (existingStudent != null) {
+        // Update existing student — preserves _id and all other fields
+        await ApiService.updateStudent(_currentLoggedInPhone!, updatedData);
+      } else {
+        await ApiService.addStudent(updatedData);
+      }
+
       if (!fromPayment && mounted) {
         _clearFormFields();
         ScaffoldMessenger.of(context).showSnackBar(
