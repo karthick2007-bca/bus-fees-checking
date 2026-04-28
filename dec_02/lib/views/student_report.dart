@@ -48,35 +48,109 @@ class _StudentReportState extends State<StudentReport> {
     super.dispose();
   }
 
+  // Helper: phone-ku valid student details edukku (DB + reports fallback)
+  Future<Map<String, dynamic>> _fetchStudentDetails() async {
+    final students = await ApiService.getStudents();
+
+    // 1. phone + dob match
+    Map<String, dynamic> found = students.firstWhere(
+      (s) => s['phone']?.toString() == widget.phone &&
+             s['dob']?.toString().split('T')[0] == widget.dob,
+      orElse: () => <String, dynamic>{},
+    );
+
+    // 2. phone only fallback
+    if (found.isEmpty || (found['name']?.toString() ?? '').isEmpty) {
+      found = students.firstWhere(
+        (s) => s['phone']?.toString() == widget.phone,
+        orElse: () => <String, dynamic>{},
+      );
+    }
+
+    // 3. reports fallback — name ullla latest valid report
+    if (found.isEmpty || (found['name']?.toString() ?? '').isEmpty) {
+      final reports = await ApiService.getReportsByPhone(widget.phone);
+      final validReports = reports
+          .where((r) => (r['name']?.toString() ?? '').isNotEmpty)
+          .toList();
+      if (validReports.isNotEmpty) {
+        validReports.sort((a, b) {
+          final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          return bDate.compareTo(aDate);
+        });
+        final r = validReports.first;
+        found = {
+          ...found,
+          'name':         r['name']         ?? '',
+          'rollNo':       r['rollNo']       ?? '',
+          'studentClass': r['studentClass'] ?? '',
+          'parentName':   r['parentName']   ?? '',
+          'address':      r['address']      ?? '',
+          'phone':        r['phone']        ?? widget.phone,
+          'dob':          r['dob']          ?? widget.dob,
+          'location':     found['location'] ?? r['location'] ?? '',
+          'amountPaid':   found['amountPaid'] ?? r['amountPaid'] ?? 0,
+          'totalDue':     found['totalDue']   ?? r['totalDue']   ?? 0,
+          'status':       found['status']     ?? r['status']     ?? 'pending',
+        };
+      }
+    }
+    return found;
+  }
+
   Future<void> _loadData() async {
     try {
-      // Load student profile
       if (widget.initialData != null && widget.initialData!.isNotEmpty) {
         final data = Map<String, dynamic>.from(widget.initialData!);
+        // initialData-la name blank-a irundha reports-la irundhu fill pannu
+        if ((data['name']?.toString() ?? '').isEmpty) {
+          final full = await _fetchStudentDetails();
+          full.forEach((k, v) {
+            if ((data[k]?.toString() ?? '').isEmpty) data[k] = v;
+          });
+        }
         data.forEach((key, value) { if (value == null) data[key] = ''; });
         studentData = data;
       } else {
-        final students = await ApiService.getStudents();
-        final student = students.firstWhere(
-          (s) =>
-              s['phone']?.toString() == widget.phone &&
-              s['dob']?.toString().split('T')[0] == widget.dob,
-          orElse: () => {},
-        );
-        studentData = student.isNotEmpty ? Map<String, dynamic>.from(student) : null;
+        studentData = await _fetchStudentDetails();
+        if (studentData!.isEmpty) studentData = null;
       }
 
-      // Load all reports for this student
       final allReports = await ApiService.getReportsByPhone(widget.phone);
-      // Sort newest first
       allReports.sort((a, b) {
         final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
         final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
         return bDate.compareTo(aDate);
       });
 
+      // Blank reports-la valid student details fill pannu
+      final validDetails = allReports
+          .where((r) => (r['name']?.toString() ?? '').isNotEmpty)
+          .toList();
+      Map<String, dynamic> detailSource = {};
+      if (validDetails.isNotEmpty) {
+        validDetails.sort((a, b) {
+          final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+          return bDate.compareTo(aDate);
+        });
+        detailSource = Map<String, dynamic>.from(validDetails.first);
+      }
+
       setState(() {
-        _reports = allReports.map((r) => Map<String, dynamic>.from(r)).toList();
+        _reports = allReports.map((r) {
+          final report = Map<String, dynamic>.from(r);
+          // blank fields-la detailSource-la irundhu fill pannu
+          if (detailSource.isNotEmpty) {
+            for (final key in ['name', 'rollNo', 'studentClass', 'parentName', 'address', 'dob']) {
+              if ((report[key]?.toString() ?? '').isEmpty && (detailSource[key]?.toString() ?? '').isNotEmpty) {
+                report[key] = detailSource[key];
+              }
+            }
+          }
+          return report;
+        }).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -89,7 +163,19 @@ class _StudentReportState extends State<StudentReport> {
     final amountPaid = (studentData!['totalDue'] ?? 0).toDouble();
     final now = DateTime.now().toIso8601String();
 
-    await ApiService.updateStudent(studentData!['phone'], {
+    // Full details fetch with fallback
+    final fullData = await _fetchStudentDetails();
+    final name         = (fullData['name']?.toString().isNotEmpty == true ? fullData['name'] : studentData!['name']) ?? '';
+    final rollNo       = (fullData['rollNo']?.toString().isNotEmpty == true ? fullData['rollNo'] : studentData!['rollNo']) ?? '';
+    final studentClass = (fullData['studentClass']?.toString().isNotEmpty == true ? fullData['studentClass'] : studentData!['studentClass']) ?? '';
+    final parentName   = (fullData['parentName']?.toString().isNotEmpty == true ? fullData['parentName'] : studentData!['parentName']) ?? '';
+    final address      = (fullData['address']?.toString().isNotEmpty == true ? fullData['address'] : studentData!['address']) ?? '';
+    final location     = studentData!['location']?.toString() ?? '';
+    final dob          = studentData!['dob']?.toString().split('T')[0] ?? '';
+    final phone        = studentData!['phone']?.toString() ?? widget.phone;
+
+    await ApiService.updateStudent(phone, {
+      ...fullData,
       'amountPaid': amountPaid,
       'totalDue': 0,
       'status': 'succeed',
@@ -98,50 +184,48 @@ class _StudentReportState extends State<StudentReport> {
     });
 
     await ApiService.saveTransaction({
-      'studentId': studentData!['_id']?.toString() ?? studentData!['id'] ?? '',
-      'studentName': studentData!['name'],
-      'phone': studentData!['phone'],
-      'rollNo': studentData!['rollNo'],
-      'amount': amountPaid,
-      'paymentId': paymentId,
-      'orderId': response['orderId'] ?? '',
-      'timestamp': now,
+      'studentId':   fullData['_id']?.toString() ?? fullData['id'] ?? '',
+      'studentName': name,
+      'phone':       phone,
+      'rollNo':      rollNo,
+      'amount':      amountPaid,
+      'paymentId':   paymentId,
+      'orderId':     response['orderId'] ?? '',
+      'timestamp':   now,
     });
 
     await ApiService.saveReport({
-      'phone': studentData!['phone'],
-      'name': studentData!['name'],
-      'rollNo': studentData!['rollNo'],
-      'studentClass': studentData!['studentClass'],
-      'parentName': studentData!['parentName'],
-      'address': studentData!['address'],
-      'location': studentData!['location'],
-      'dob': studentData!['dob']?.toString().split('T')[0],
-      'totalDue': 0,
-      'amountPaid': amountPaid,
-      'status': 'succeed',
-      'paymentId': paymentId,
-      'paymentDate': now,
-      'generatedAt': now,
+      'phone':        phone,
+      'name':         name,
+      'rollNo':       rollNo,
+      'studentClass': studentClass,
+      'parentName':   parentName,
+      'address':      address,
+      'location':     location,
+      'dob':          dob,
+      'totalDue':     0,
+      'amountPaid':   amountPaid,
+      'status':       'succeed',
+      'paymentId':    paymentId,
+      'paymentDate':  now,
+      'generatedAt':  now,
     });
 
     try {
       await ApiService.saveNotification({
-        'type': 'payment',
-        'studentName': studentData!['name'] ?? 'Student',
-        'phone': studentData!['phone'] ?? '',
-        'amount': amountPaid,
-        'location': studentData!['location'] ?? '',
-        'paymentId': paymentId,
-        'message': 'Payment of ₹$amountPaid received',
+        'type':        'payment',
+        'studentName': name,
+        'phone':       phone,
+        'amount':      amountPaid,
+        'location':    location,
+        'paymentId':   paymentId,
+        'message':     'Payment of ₹$amountPaid received',
       });
     } catch (_) {}
 
-    // Reload all reports to show the new one
     await _loadData();
 
     if (mounted) {
-      // Jump to first page (newest report)
       _pageController.jumpToPage(0);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -633,9 +717,9 @@ class _StudentReportState extends State<StudentReport> {
                       ),
                       const SizedBox(height: 8),
                       _frameItem(
-                        icon: Icons.edit_note_rounded,
-                        label: 'Edit Report',
-                        color: const Color(0xFF4F46E5),
+                        icon: Icons.edit_location_alt_rounded,
+                        label: 'Edit Location',
+                        color: const Color(0xFF6C63FF),
                         onTap: () {
                           setState(() => _isFrameOpen = false);
                           Navigator.push(
@@ -647,7 +731,7 @@ class _StudentReportState extends State<StudentReport> {
                                 currentLocation: studentData?['location'] ?? '',
                               ),
                             ),
-                          );
+                          ).then((_) => _loadData());
                         },
                       ),
                       const Padding(

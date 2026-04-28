@@ -28,6 +28,7 @@ class _EditReportPageState extends State<EditReportPage> {
   double totalAmount = 0;
   bool _isProcessing = false;
   bool _isLoading = true;
+  Map<String, dynamic> _studentData = {};
 
   // Design constants — same as registration page
   static const _bg       = Color(0xFF0F0F1A);
@@ -60,7 +61,35 @@ class _EditReportPageState extends State<EditReportPage> {
   Future<void> loadLocations() async {
     try {
       final data = await ApiService.getLocations();
+      final students = await ApiService.getStudents();
+
+      // Load student details
+      Map<String, dynamic> found = students.firstWhere(
+        (s) => s['phone']?.toString() == widget.phone &&
+               s['dob']?.toString().split('T')[0] == widget.dob,
+        orElse: () => <String, dynamic>{},
+      );
+      if (found.isEmpty || (found['name']?.toString() ?? '').isEmpty) {
+        found = students.firstWhere(
+          (s) => s['phone']?.toString() == widget.phone,
+          orElse: () => <String, dynamic>{},
+        );
+      }
+      if (found.isEmpty || (found['name']?.toString() ?? '').isEmpty) {
+        final reports = await ApiService.getReportsByPhone(widget.phone);
+        final valid = reports.where((r) => (r['name']?.toString() ?? '').isNotEmpty).toList();
+        if (valid.isNotEmpty) {
+          valid.sort((a, b) {
+            final aD = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+            final bD = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+            return bD.compareTo(aD);
+          });
+          found = {...found, ...valid.first};
+        }
+      }
+
       setState(() {
+        _studentData = found;
         locations = data.map((loc) => location_model.Route(
           id: loc['id'] ?? '',
           name: loc['name'] ?? '',
@@ -87,17 +116,16 @@ class _EditReportPageState extends State<EditReportPage> {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
     try {
-      // Fetch full student data — try phone+dob first, fallback to phone only
       final students = await ApiService.getStudents();
 
+      // 1. phone+dob match
       Map<String, dynamic> existing = students.firstWhere(
-        (s) =>
-            s['phone']?.toString() == widget.phone &&
-            s['dob']?.toString().split('T')[0] == widget.dob,
+        (s) => s['phone']?.toString() == widget.phone &&
+               s['dob']?.toString().split('T')[0] == widget.dob,
         orElse: () => <String, dynamic>{},
       );
 
-      // Fallback: match by phone alone if dob match failed or returned empty
+      // 2. phone only fallback
       if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
         existing = students.firstWhere(
           (s) => s['phone']?.toString() == widget.phone,
@@ -105,7 +133,35 @@ class _EditReportPageState extends State<EditReportPage> {
         );
       }
 
-      // Merge — only overwrite location/payment fields, keep all personal details
+      // 3. reports fallback — name உள்ள report எடு
+      if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
+        final reports = await ApiService.getReportsByPhone(widget.phone);
+        if (reports.isNotEmpty) {
+          // name இருக்கிற reports மட்டும் filter பண்ணு
+          final validReports = reports.where(
+            (r) => (r['name']?.toString() ?? '').isNotEmpty,
+          ).toList();
+          if (validReports.isNotEmpty) {
+            validReports.sort((a, b) {
+              final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+              final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+              return bDate.compareTo(aDate);
+            });
+            final r = validReports.first;
+            existing = {
+              ...existing,
+              'name':         r['name']         ?? '',
+              'rollNo':       r['rollNo']       ?? '',
+              'studentClass': r['studentClass'] ?? '',
+              'parentName':   r['parentName']   ?? '',
+              'address':      r['address']      ?? '',
+              'phone':        r['phone']        ?? widget.phone,
+              'dob':          r['dob']          ?? widget.dob,
+            };
+          }
+        }
+      }
+
       final updatedData = Map<String, dynamic>.from(existing);
       updatedData['location']    = newLocation!.name;
       updatedData['amountPaid']  = newLocation!.fee;
@@ -129,7 +185,6 @@ class _EditReportPageState extends State<EditReportPage> {
         'timestamp':   now,
       });
 
-      // Save report — explicitly pull every personal field from updatedData
       await ApiService.saveReport({
         'phone':        updatedData['phone']        ?? widget.phone,
         'name':         updatedData['name']         ?? '',
@@ -191,12 +246,11 @@ class _EditReportPageState extends State<EditReportPage> {
         const SnackBar(content: Text('Please select new location'), backgroundColor: Colors.orange));
       return;
     }
-    if (oldLocation?.id == newLocation?.id) {
+    if (oldLocation?.name == newLocation?.name) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('New location must be different'), backgroundColor: Colors.orange));
       return;
     }
-    // Same fee — no payment needed, update directly
     if (totalAmount == 0) {
       _updateLocationWithoutPayment();
       return;
@@ -210,9 +264,8 @@ class _EditReportPageState extends State<EditReportPage> {
     try {
       final students = await ApiService.getStudents();
       Map<String, dynamic> existing = students.firstWhere(
-        (s) =>
-            s['phone']?.toString() == widget.phone &&
-            s['dob']?.toString().split('T')[0] == widget.dob,
+        (s) => s['phone']?.toString() == widget.phone &&
+               s['dob']?.toString().split('T')[0] == widget.dob,
         orElse: () => <String, dynamic>{},
       );
       if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
@@ -220,6 +273,33 @@ class _EditReportPageState extends State<EditReportPage> {
           (s) => s['phone']?.toString() == widget.phone,
           orElse: () => <String, dynamic>{},
         );
+      }
+      // reports fallback — name உள்ள report எடு
+      if (existing.isEmpty || (existing['name']?.toString() ?? '').isEmpty) {
+        final reports = await ApiService.getReportsByPhone(widget.phone);
+        if (reports.isNotEmpty) {
+          final validReports = reports.where(
+            (r) => (r['name']?.toString() ?? '').isNotEmpty,
+          ).toList();
+          if (validReports.isNotEmpty) {
+            validReports.sort((a, b) {
+              final aDate = DateTime.tryParse(a['generatedAt']?.toString() ?? '') ?? DateTime(0);
+              final bDate = DateTime.tryParse(b['generatedAt']?.toString() ?? '') ?? DateTime(0);
+              return bDate.compareTo(aDate);
+            });
+            final r = validReports.first;
+            existing = {
+              ...existing,
+              'name':         r['name']         ?? '',
+              'rollNo':       r['rollNo']       ?? '',
+              'studentClass': r['studentClass'] ?? '',
+              'parentName':   r['parentName']   ?? '',
+              'address':      r['address']      ?? '',
+              'phone':        r['phone']        ?? widget.phone,
+              'dob':          r['dob']          ?? widget.dob,
+            };
+          }
+        }
       }
 
       final updatedData = Map<String, dynamic>.from(existing);
@@ -343,25 +423,68 @@ class _EditReportPageState extends State<EditReportPage> {
                       ),
                       const SizedBox(height: 28),
 
-                      // ── Current location ──
-                      _sectionLabel('Current Location', Icons.location_on_rounded),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<location_model.Route>(
-                        value: oldLocation,
-                        dropdownColor: const Color(0xFF1E1E32),
-                        style: const TextStyle(color: _textPrimary, fontSize: 14),
-                        iconEnabledColor: _accent,
-                        decoration: _dropdownDec('Current Stop'),
-                        items: locations.map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text('${r.name}  ·  ₹${r.fee.toStringAsFixed(0)}',
-                              style: const TextStyle(color: _textPrimary, fontSize: 13)),
-                        )).toList(),
-                        onChanged: (r) => setState(() { oldLocation = r; calculateAmount(); }),
+                      // ── Student details (read-only) ──
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _accent.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _accent.withOpacity(0.2)),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            const Icon(Icons.person_rounded, color: _accent, size: 15),
+                            const SizedBox(width: 6),
+                            const Text('STUDENT DETAILS',
+                              style: TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                          ]),
+                          const SizedBox(height: 12),
+                          _detailRow('Name',         _studentData['name']?.toString() ?? '-'),
+                          _detailRow('Class',        _studentData['studentClass']?.toString() ?? '-'),
+                          _detailRow('Roll No',      _studentData['rollNo']?.toString() ?? '-'),
+                          _detailRow('Parent Name',  _studentData['parentName']?.toString() ?? '-'),
+                          _detailRow('Phone',        widget.phone),
+                        ]),
                       ),
                       const SizedBox(height: 24),
 
-                      // ── New location ──
+                      // ── Current location (read-only) ──
+                      _sectionLabel('Current Location', Icons.location_on_rounded),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E32),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on_rounded, color: _accent, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                oldLocation != null
+                                    ? '${oldLocation!.name}  ·  ₹${oldLocation!.fee.toStringAsFixed(0)}'
+                                    : widget.currentLocation,
+                                style: const TextStyle(color: _textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _accent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('Current', style: TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── New location (exclude current) ──
                       _sectionLabel('New Location', Icons.edit_location_alt_rounded),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<location_model.Route>(
@@ -372,11 +495,13 @@ class _EditReportPageState extends State<EditReportPage> {
                         decoration: _dropdownDec('Select New Stop'),
                         hint: const Text('Choose new stop',
                             style: TextStyle(color: _textSecondary, fontSize: 13)),
-                        items: locations.map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text('${r.name}  ·  ₹${r.fee.toStringAsFixed(0)}',
-                              style: const TextStyle(color: _textPrimary, fontSize: 13)),
-                        )).toList(),
+                        items: locations
+                            .where((r) => r.name != oldLocation?.name)
+                            .map((r) => DropdownMenuItem(
+                              value: r,
+                              child: Text('${r.name}  ·  ₹${r.fee.toStringAsFixed(0)}',
+                                  style: const TextStyle(color: _textPrimary, fontSize: 13)),
+                            )).toList(),
                         onChanged: (r) => setState(() { newLocation = r; calculateAmount(); }),
                       ),
 
@@ -487,6 +612,22 @@ class _EditReportPageState extends State<EditReportPage> {
                   ),
               ],
             ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        SizedBox(
+          width: 100,
+          child: Text(label, style: const TextStyle(color: _textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        const Text(': ', style: TextStyle(color: _textSecondary, fontSize: 12)),
+        Expanded(
+          child: Text(value, style: const TextStyle(color: _textPrimary, fontSize: 12, fontWeight: FontWeight.w500)),
+        ),
+      ]),
     );
   }
 

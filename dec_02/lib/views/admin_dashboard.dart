@@ -1,5 +1,6 @@
 ﻿
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:iconsax/iconsax.dart';
 import 'package:file_picker/file_picker.dart';
@@ -14,7 +15,9 @@ import 'dart:math' as math;
 import '../data/storage.dart';
 import '../services/api_service.dart';
 import '../models/location.dart' as location_model;
-
+import 'class_section_backup_page.dart';
+import 'class_section_backup_page.dart';
+import 'generate_report_page.dart';
 class AdminDashboard extends StatefulWidget {
   final VoidCallback onLogout;
 
@@ -1112,6 +1115,7 @@ class _AddLocationPageState extends State<AddLocationPage> {
                               TextField(
                                 controller: feeController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                                 decoration: _glassInputDec('e.g. 2500', Icons.currency_rupee_rounded),
                               ),
@@ -1407,6 +1411,7 @@ class _EditLocationPageState extends State<EditLocationPage> {
                               TextField(
                                 controller: feeController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                                 decoration: _glassDec('e.g. 2500', Icons.currency_rupee_rounded, const Color(0xFF10B981)),
                               ),
@@ -1554,9 +1559,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
   }
 
   String _formatAmount(double value) {
-    if (value >= 100000) return 'â‚¹${(value / 100000).toStringAsFixed(1)}L';
-    if (value >= 1000) return 'â‚¹${(value / 1000).toStringAsFixed(0)}K';
-    return 'â‚¹${value.toStringAsFixed(0)}';
+    return value.toStringAsFixed(0);
   }
 
   @override
@@ -1769,6 +1772,7 @@ class _AdminRolePageState extends State<AdminRolePage> {
     );
   }
 }
+
 
 
 class _LocationBarChart extends StatelessWidget {
@@ -2004,7 +2008,9 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
   bool _isUploading = false;
   bool _isSubmitting = false;
   List<dynamic> _students = [];
-  String? _longPressedStudentId;
+  final Set<String> _selectedIds = {};
+  final TextEditingController nameEntryController = TextEditingController();
+  final TextEditingController classSectionEntryController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController dobController = TextEditingController();
 
@@ -2016,6 +2022,8 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
 
   @override
   void dispose() {
+    nameEntryController.dispose();
+    classSectionEntryController.dispose();
     phoneController.dispose();
     dobController.dispose();
     super.dispose();
@@ -2027,7 +2035,8 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
   }
 
   Future<void> _submitStudent() async {
-    if (phoneController.text.isEmpty || dobController.text.isEmpty) {
+    if (nameEntryController.text.isEmpty || classSectionEntryController.text.isEmpty ||
+        phoneController.text.isEmpty || dobController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all fields'), backgroundColor: Colors.red),
       );
@@ -2065,9 +2074,9 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
       }
       await ApiService.addStudent({
         'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'name': '',
+        'name': nameEntryController.text.trim(),
         'rollNo': '',
-        'studentClass': '',
+        'studentClass': classSectionEntryController.text.trim(),
         'parentName': '',
         'phone': phoneController.text,
         'email': '',
@@ -2083,6 +2092,8 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
       });
 
       await _loadStudents();
+      nameEntryController.clear();
+      classSectionEntryController.clear();
       phoneController.clear();
       dobController.clear();
       if (mounted) {
@@ -2214,17 +2225,14 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                       const SizedBox(width: 12),
                       const Text('Student Entry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
                       const Spacer(),
-                      if (_longPressedStudentId != null)
+                      if (_selectedIds.isNotEmpty)
                         GestureDetector(
                           onTap: () async {
-                            final student = _students.firstWhere(
-                              (s) => (s['_id'] ?? s['id'])?.toString() == _longPressedStudentId,
-                            );
                             final confirm = await showDialog<bool>(
                               context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Student'),
-                                content: Text('Move ${student['phone']} to recycle bin?'),
+                              builder: (_) => AlertDialog(
+                                title: const Text('Delete Students'),
+                                content: Text('Delete \ selected student\?'),
                                 actions: [
                                   TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
                                   TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
@@ -2232,23 +2240,28 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                               ),
                             );
                             if (confirm == true) {
-                              await ApiService.deleteStudent(_longPressedStudentId!);
-                              setState(() => _longPressedStudentId = null);
+                              for (final id in _selectedIds.toList()) {
+                                await ApiService.deleteStudent(id);
+                              }
+                              setState(() => _selectedIds.clear());
                               await _loadStudents();
-                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student moved to recycle bin'), backgroundColor: Colors.orange));
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Students moved to recycle bin'), backgroundColor: Colors.orange));
                             }
                           },
                           child: Container(
-                            width: 34, height: 34,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.red.withOpacity(0.18),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: Colors.red.withOpacity(0.4)),
                             ),
-                            child: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 17),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 16),
+                              const SizedBox(width: 5),
+                              Text('${_selectedIds.length}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 13)),
+                            ]),
                           ),
                         ),
-                      if (_longPressedStudentId != null) const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
@@ -2307,6 +2320,18 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                         ),
                         child: Column(
                           children: [
+                            TextField(
+                              controller: nameEntryController,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: _glassInput('Name', Icons.person_rounded),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: classSectionEntryController,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: _glassInput('Class / Section (e.g. 5th/A)', Icons.school_rounded),
+                            ),
+                            const SizedBox(height: 12),
                             TextField(
                               controller: phoneController,
                               keyboardType: TextInputType.phone,
@@ -2442,7 +2467,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                           itemBuilder: (context, index) {
                             final student = _students[index];
                             final studentId = (student['_id'] ?? student['id'])?.toString();
-                            final isSelected = _longPressedStudentId == studentId;
+                            final isSelected = _selectedIds.contains(studentId);
                             final colors = [
                               const Color(0xFF10B981), const Color(0xFF6C00FF),
                               const Color(0xFF0EA5E9), const Color(0xFFF59E0B),
@@ -2450,8 +2475,12 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                             ];
                             final accent = colors[index % colors.length];
                             return GestureDetector(
-                              onTap: () { if (_longPressedStudentId != null) setState(() => _longPressedStudentId = null); },
-                              onLongPress: () => setState(() => _longPressedStudentId = isSelected ? null : studentId),
+                              onTap: () => setState(() {
+                                if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); } else if (_selectedIds.isNotEmpty) { _selectedIds.add(studentId!); }
+                              }),
+                              onLongPress: () => setState(() {
+                                if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); } else { _selectedIds.add(studentId!); }
+                              }),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 margin: const EdgeInsets.only(bottom: 10),
@@ -2481,7 +2510,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                                             child: isSelected
                                                 ? const Icon(Icons.check_rounded, color: Colors.redAccent, size: 20)
                                                 : Center(child: Text(
-                                                    (student['phone']?.toString() ?? 'P').substring(0, 1),
+                                                    (student['name']?.toString().isNotEmpty == true ? student['name'].toString() : student['phone']?.toString() ?? 'S').substring(0, 1),
                                                     style: TextStyle(color: accent, fontSize: 16, fontWeight: FontWeight.w800),
                                                   )),
                                           ),
@@ -2490,7 +2519,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Text(student['phone'] ?? 'No Phone',
+                                                Text(student['name']?.toString().isNotEmpty == true ? student['name'] : 'No Name',
                                                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
                                                 const SizedBox(height: 3),
                                                 Row(
@@ -2502,7 +2531,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                                                         borderRadius: BorderRadius.circular(6),
                                                       ),
                                                       child: Text(
-                                                        'DOB: ${student['dob']?.toString().split('T')[0] ?? 'N/A'}',
+                                                        'Class: ' + (student['studentClass']?.toString().isNotEmpty == true ? student['studentClass'] : 'N/A'),
                                                         style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w600),
                                                       ),
                                                     ),
@@ -2563,7 +2592,7 @@ class _LocationStudentsPageState extends State<LocationStudentsPage> {
     try {
       final allStudents = await ApiService.getStudents();
       setState(() {
-        _students = allStudents.where((s) => s['location'] == widget.locationName).toList();
+        _students = allStudents.where((s) => (s['location']?.toString() ?? '').trim().toLowerCase() == widget.locationName.trim().toLowerCase()).toList();
         _filteredStudents = _students;
         _isLoading = false;
       });
@@ -4256,6 +4285,61 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
     }
   }
 
+  Future<void> _generateReport() async {
+    final pdf = pw.Document();
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
+      build: (_) => [
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: pw.BoxDecoration(color: PdfColors.blue700, borderRadius: pw.BorderRadius.circular(8)),
+          child: pw.Text('All Students Report',
+            style: pw.TextStyle(color: PdfColors.white, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        ),
+        pw.SizedBox(height: 6),
+        pw.Text('Total: ${_students.length} students  â€¢  Generated: ${DateTime.now().toString().split(".")[0]}',
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+        pw.SizedBox(height: 12),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+          columnWidths: {
+            0: const pw.FlexColumnWidth(2.5),
+            1: const pw.FlexColumnWidth(1.8),
+            2: const pw.FlexColumnWidth(1.5),
+            3: const pw.FlexColumnWidth(1.5),
+          },
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.blue700),
+              children: ['Name', 'Phone', 'Class', 'Status'].map((h) =>
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                  child: pw.Text(h, style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                )).toList(),
+            ),
+            ..._students.asMap().entries.map((e) {
+              final i = e.key; final s = e.value;
+              return pw.TableRow(
+                decoration: pw.BoxDecoration(color: i.isEven ? PdfColors.grey100 : PdfColors.white),
+                children: [
+                  s['name']?.toString() ?? '',
+                  s['phone']?.toString() ?? '',
+                  s['studentClass']?.toString() ?? '',
+                  s['status']?.toString() ?? 'pending',
+                ].map((v) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                  child: pw.Text(v, style: const pw.TextStyle(fontSize: 8)),
+                )).toList(),
+              );
+            }),
+          ],
+        ),
+      ],
+    ));
+    await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -4377,6 +4461,33 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GenerateReportPage())),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                              begin: Alignment.centerLeft, end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [BoxShadow(color: const Color(0xFF0EA5E9).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 3))],
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 15),
+                            SizedBox(width: 6),
+                            Text('Generate Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                          ]),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Student list
                 Expanded(
@@ -4415,9 +4526,9 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                                   const Color(0xFFEC4899), const Color(0xFF8B5CF6),
                                 ];
                                 final accent = accents[index % accents.length];
-                                final phone = student['phone']?.toString() ?? '';
-                                final initial = phone.isNotEmpty ? phone[0] : 'S';
-
+                                 final name = student['name']?.toString() ?? '';
+                                 final cls = student['studentClass']?.toString() ?? '';
+                                 final initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
                                 return GestureDetector(
                                   onTap: () {
                                     if (_selectedIds.isNotEmpty) {
@@ -4463,7 +4574,7 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                                                 child: isSelected
                                                     ? const Icon(Icons.check_rounded, color: Colors.redAccent, size: 20)
                                                     : Center(
-                                                        child: Text(initial,
+                                                         child: Text(initial,
                                                           style: TextStyle(color: accent, fontSize: 17, fontWeight: FontWeight.w800)),
                                                       ),
                                               ),
@@ -4472,7 +4583,7 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    Text(phone.isNotEmpty ? phone : 'No Phone',
+                                                     Text(name.isNotEmpty ? name : 'No Name',
                                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
                                                     const SizedBox(height: 4),
                                                     Row(
@@ -4484,7 +4595,7 @@ class _AllStudentsPageState extends State<AllStudentsPage> {
                                                             borderRadius: BorderRadius.circular(6),
                                                           ),
                                                           child: Text(
-                                                            'DOB: ${student['dob']?.toString().split('T')[0] ?? 'N/A'}',
+                                                            "Class: ${cls.isNotEmpty ? cls : 'N/A'}",
                                                             style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w600),
                                                           ),
                                                         ),
@@ -4890,6 +5001,13 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
   List<dynamic> _filteredUnpaid = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
+  String _selectedClass = 'All';
+
+  static const List<String> _classOrder = [
+    'All', 'LKG', 'UKG',
+    '1', '2', '3', '4', '5', '6',
+    '7', '8', '9', '10', '11', '12',
+  ];
 
   @override
   void initState() {
@@ -4920,24 +5038,35 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
     }
   }
 
-  void _onSearch(String query) {
-    final q = query.toLowerCase().trim();
+  // class normalize: "5th/A", "5TH-A", "5" → leading number or LKG/UKG
+  String _extractClass(dynamic s) {
+    final raw = (s['studentClass']?.toString() ?? '').trim().toUpperCase();
+    if (raw.startsWith('LKG')) return 'LKG';
+    if (raw.startsWith('UKG')) return 'UKG';
+    final m = RegExp(r'^(\d+)').firstMatch(raw);
+    return m != null ? m.group(1)! : '';
+  }
+
+  void _applyFilters() {
+    final q = _searchController.text.toLowerCase().trim();
+    bool matchSearch(s) =>
+        q.isEmpty ||
+        (s['name']         ?? '').toString().toLowerCase().contains(q) ||
+        (s['phone']        ?? '').toString().toLowerCase().contains(q) ||
+        (s['rollNo']       ?? '').toString().toLowerCase().contains(q) ||
+        (s['studentClass'] ?? '').toString().toLowerCase().contains(q) ||
+        (s['location']     ?? '').toString().toLowerCase().contains(q);
+
+    bool matchClass(s) =>
+        _selectedClass == 'All' || _extractClass(s) == _selectedClass;
+
     setState(() {
-      if (q.isEmpty) {
-        _filteredPaid   = _paidStudents;
-        _filteredUnpaid = _unpaidStudents;
-      } else {
-        bool _match(s) =>
-            (s['name']         ?? '').toString().toLowerCase().contains(q) ||
-            (s['phone']        ?? '').toString().toLowerCase().contains(q) ||
-            (s['rollNo']       ?? '').toString().toLowerCase().contains(q) ||
-            (s['studentClass'] ?? '').toString().toLowerCase().contains(q) ||
-            (s['location']     ?? '').toString().toLowerCase().contains(q);
-        _filteredPaid   = _paidStudents.where(_match).toList();
-        _filteredUnpaid = _unpaidStudents.where(_match).toList();
-      }
+      _filteredPaid   = _paidStudents.where((s) => matchSearch(s) && matchClass(s)).toList();
+      _filteredUnpaid = _unpaidStudents.where((s) => matchSearch(s) && matchClass(s)).toList();
     });
   }
+
+  void _onSearch(String query) => _applyFilters();
 
   Widget _buildStudentCard(Map<String, dynamic> student, bool isPaid, int index) {
     final accents = [
@@ -5159,87 +5288,6 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
           SafeArea(
             child: Column(
               children: [
-                // Stats row
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 30, height: 30,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981).withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(9),
-                                    ),
-                                    child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('${_paidStudents.length}', style: const TextStyle(color: Color(0xFF10B981), fontSize: 18, fontWeight: FontWeight.w900, height: 1)),
-                                      Text('Paid', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10, fontWeight: FontWeight.w500)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF59E0B).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.25)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 30, height: 30,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF59E0B).withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(9),
-                                    ),
-                                    child: const Icon(Icons.pending_rounded, color: Color(0xFFF59E0B), size: 16),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('${_unpaidStudents.length}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 18, fontWeight: FontWeight.w900, height: 1)),
-                                      Text('Unpaid', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10, fontWeight: FontWeight.w500)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 12),
 
                 // Tab bar
@@ -5292,6 +5340,62 @@ class _PaidUnpaidStudentsPageState extends State<PaidUnpaidStudentsPage>
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // ── Class filter chips ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                  const Icon(Icons.chevron_left_rounded, color: Colors.white54, size: 14),
+                  Expanded(
+                    child: SizedBox(
+                      height: 35,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _classOrder.length,
+                            itemBuilder: (context, i) {
+                              final cls = _classOrder[i];
+                              final isSelected = _selectedClass == cls;
+                              final label = (cls == 'LKG' || cls == 'UKG' || cls == 'All')
+                                  ? cls
+                                  : '${cls}th';
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedClass = cls);
+                                  _applyFilters();
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: MediaQuery.of(context).size.width * 0.22,
+                                  margin: const EdgeInsets.only(right: 6),
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? const Color(0xFF10B981) : Colors.white.withOpacity(0.07),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSelected ? const Color(0xFF10B981) : Colors.white.withOpacity(0.15),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.55),
+                                      fontSize: 12,
+                                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 14),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
 
                 // Search bar
                 Padding(
@@ -5653,7 +5757,6 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
   List<dynamic> _students = [];
   bool _isLoading = true;
   bool _isDownloading = false;
-  late TabController _tabController;
 
   static const _bg     = Color(0xFF060818);
   static const _card   = Color(0xFF1A1A2E);
@@ -5667,13 +5770,11 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadStudents();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -5686,8 +5787,6 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
     }
   }
 
-  List<dynamic> get _paid   => _students.where((s) => s['status'] == 'succeed').toList();
-  List<dynamic> get _unpaid => _students.where((s) => s['status'] != 'succeed').toList();
 
   Future<void> _downloadPdf(List<dynamic> students, String title, bool isPaid) async {
     setState(() => _isDownloading = true);
@@ -5775,13 +5874,14 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
             Center(child: Container(width: 40, height: 4,
               decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('Download PDF', style: TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('Backup Options', style: TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 16),
-            _downloadTile(Icons.check_circle_rounded, 'Paid Students', 'Download paid students report', _green,
-              () { Navigator.pop(context); _downloadPdf(_paid, 'Paid Students Report', true); }),
+            // Class-wise view
+            _downloadTile(Icons.school_rounded, 'Class-wise View', 'View paid students by class & section', const Color(0xFF6C00FF),
+              () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassSectionBackupPage())); }),
             const SizedBox(height: 10),
-            _downloadTile(Icons.pending_rounded, 'Unpaid Students', 'Download unpaid students report', _amber,
-              () { Navigator.pop(context); _downloadPdf(_unpaid, 'Unpaid Students Report', false); }),
+            _downloadTile(Icons.picture_as_pdf_rounded, 'All Students PDF', 'Download all students report', _accent,
+              () { Navigator.pop(context); _downloadPdf(_students, 'All Students Report', true); }),
           ],
         ),
       ),
@@ -5815,8 +5915,6 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final paid   = _paid;
-    final unpaid = _unpaid;
     return Scaffold(
       backgroundColor: _bg,
       appBar: PreferredSize(
@@ -5902,66 +6000,7 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
           SafeArea(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: _accent))
-                : Column(children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                      child: Row(children: [
-                        _statBadge('${_students.length}', 'Total', _accent),
-                        const SizedBox(width: 10),
-                        _statBadge('${paid.length}', 'Paid', _green),
-                        const SizedBox(width: 10),
-                        _statBadge('${unpaid.length}', 'Unpaid', _amber),
-                      ]),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
-                            ),
-                            child: TabBar(
-                              controller: _tabController,
-                              labelColor: _green,
-                              unselectedLabelColor: _ts,
-                              indicatorColor: _green,
-                              indicatorWeight: 2,
-                              indicatorSize: TabBarIndicatorSize.label,
-                              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                              tabs: [
-                                Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  const Icon(Icons.check_circle_rounded, size: 14),
-                                  const SizedBox(width: 6),
-                                  Text('Paid (${paid.length})'),
-                                ])),
-                                Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  const Icon(Icons.pending_rounded, size: 14),
-                                  const SizedBox(width: 6),
-                                  Text('Unpaid (${unpaid.length})'),
-                                ])),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _studentList(paid, _green),
-                          _studentList(unpaid, _amber),
-                        ],
-                      ),
-                    ),
-                  ]),
+                : _studentList(_students, _accent),
           ),
         ],
       ),
@@ -5986,79 +6025,165 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
   }
 
   Widget _studentList(List<dynamic> students, Color accent) {
-    if (students.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 64, height: 64,
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.1))),
-          child: Icon(Icons.person_off_rounded, color: Colors.white.withOpacity(0.25), size: 28)),
-        const SizedBox(height: 12),
-        Text('No students', style: TextStyle(color: _ts, fontSize: 14, fontWeight: FontWeight.w500)),
-      ]));
+    final List<String> classOrder = [
+      'All', 'LKG', 'UKG',
+      '1', '2', '3', '4', '5', '6',
+      '7', '8', '9', '10', '11', '12',
+    ];
+    String selectedClass = 'All';
+
+    String extractClass(dynamic s) {
+      final raw = (s['studentClass']?.toString() ?? '').trim().toUpperCase();
+      if (raw.startsWith('LKG')) return 'LKG';
+      if (raw.startsWith('UKG')) return 'UKG';
+      final m = RegExp(r'^(\d+)').firstMatch(raw);
+      return m != null ? m.group(1)! : '';
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      itemCount: students.length,
-      itemBuilder: (context, index) {
-        final s = students[index];
-        final name  = s['name']?.toString() ?? '';
-        final phone = s['phone']?.toString() ?? '';
-        final loc   = s['location']?.toString() ?? '';
-        final amt   = s['amountPaid'] ?? s['totalDue'] ?? 0;
-        final initial = name.isNotEmpty ? name[0].toUpperCase() : (phone.isNotEmpty ? phone[0] : 'S');
-        final colors = [_accent, const Color(0xFF6C63FF), _green, _amber, const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
-        final c = colors[index % colors.length];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: c.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: c.withOpacity(0.22)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(children: [
-                  Container(width: 42, height: 42,
-                    decoration: BoxDecoration(color: c.withOpacity(0.18), borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: c.withOpacity(0.3))),
-                    child: Center(child: Text(initial, style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w800)))),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(name.isNotEmpty ? name : phone,
-                      style: const TextStyle(color: _tp, fontWeight: FontWeight.w700, fontSize: 14)),
-                    const SizedBox(height: 3),
-                    Row(children: [
-                      if (phone.isNotEmpty) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: c.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
-                          child: Text(phone, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w600))),
-                        const SizedBox(width: 6),
-                      ],
-                      if (loc.isNotEmpty)
-                        Expanded(child: Text(loc, style: const TextStyle(color: _ts, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                    ]),
-                  ])),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: accent.withOpacity(0.3)),
+
+    return StatefulBuilder(
+      builder: (context, setLocal) {
+        final filtered = selectedClass == 'All'
+            ? students
+            : students.where((s) => extractClass(s) == selectedClass).toList();
+
+        if (students.isEmpty) {
+          return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Container(width: 64, height: 64,
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.1))),
+              child: Icon(Icons.person_off_rounded, color: Colors.white.withOpacity(0.25), size: 28)),
+            const SizedBox(height: 12),
+            Text('No students', style: TextStyle(color: _ts, fontSize: 14, fontWeight: FontWeight.w500)),
+          ]));
+        }
+
+        return Column(
+          children: [
+            // Class filter chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.chevron_left_rounded, color: Colors.white54, size: 14),
+                  Expanded(
+                    child: SizedBox(
+                      height: 32,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: classOrder.length,
+                        itemBuilder: (context, i) {
+                          final cls = classOrder[i];
+                          final isSelected = selectedClass == cls;
+                          final label = (cls == 'LKG' || cls == 'UKG' || cls == 'All')
+                              ? cls
+                              : '${cls}th';
+                          return GestureDetector(
+                            onTap: () => setLocal(() => selectedClass = cls),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: MediaQuery.of(context).size.width * 0.22,
+                              margin: const EdgeInsets.only(right: 6),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected ? accent : Colors.white.withOpacity(0.07),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? accent : Colors.white.withOpacity(0.15),
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.55),
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.currency_rupee_rounded, color: accent, size: 11),
-                      Text('$amt', style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700)),
-                    ]),
                   ),
-                ]),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 14),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text('No students in this class',
+                        style: TextStyle(color: _ts, fontSize: 13, fontWeight: FontWeight.w500)),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final s = filtered[index];
+                        final name  = s['name']?.toString() ?? '';
+                        final phone = s['phone']?.toString() ?? '';
+                        final loc   = s['location']?.toString() ?? '';
+                        final amt   = s['amountPaid'] ?? s['totalDue'] ?? 0;
+                        final initial = name.isNotEmpty ? name[0].toUpperCase() : (phone.isNotEmpty ? phone[0] : 'S');
+                        final colors = [_accent, const Color(0xFF6C63FF), _green, _amber, const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
+                        final c = colors[index % colors.length];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: c.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: c.withOpacity(0.22)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                child: Row(children: [
+                                  Container(width: 42, height: 42,
+                                    decoration: BoxDecoration(color: c.withOpacity(0.18), borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: c.withOpacity(0.3))),
+                                    child: Center(child: Text(initial, style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w800)))),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text(name.isNotEmpty ? name : phone,
+                                      style: const TextStyle(color: _tp, fontWeight: FontWeight.w700, fontSize: 14)),
+                                    const SizedBox(height: 3),
+                                    Row(children: [
+                                      if (phone.isNotEmpty) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: c.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
+                                          child: Text(phone, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w600))),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      if (loc.isNotEmpty)
+                                        Expanded(child: Text(loc, style: const TextStyle(color: _ts, fontSize: 10), overflow: TextOverflow.ellipsis)),
+                                    ]),
+                                  ])),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: accent.withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(9),
+                                      border: Border.all(color: accent.withOpacity(0.3)),
+                                    ),
+                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      Icon(Icons.currency_rupee_rounded, color: accent, size: 11),
+                                      Text('$amt', style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700)),
+                                    ]),
+                                  ),
+                                ]),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         );
       },
     );

@@ -1,0 +1,2 @@
+Building Windows application...                                    27.3s
+√ Built build\windows\x64\runner\Release\dec_02.exe

@@ -768,5 +768,3 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`Server running on port ${PORT}`);
     });
 }
-
-// IDHU THAAN ROMBA MUKKIYAM (Vercel Backend-ku)
