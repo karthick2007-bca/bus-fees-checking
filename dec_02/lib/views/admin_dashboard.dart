@@ -578,6 +578,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               ),
                               const SizedBox(height: 10),
                               // Row 3
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8, top: 4),
+                                child: _glassSubheading('Back Up', Icons.backup_rounded),
+                              ),
                               Row(
                                 children: [
                                   _menuTile(icon: Icons.backup_rounded, label: 'Back Up', color: const Color(0xFF00CCFF),
@@ -2461,95 +2465,7 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
                             ],
                           ),
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                          itemCount: _students.length,
-                          itemBuilder: (context, index) {
-                            final student = _students[index];
-                            final studentId = (student['_id'] ?? student['id'])?.toString();
-                            final isSelected = _selectedIds.contains(studentId);
-                            final colors = [
-                              const Color(0xFF10B981), const Color(0xFF6C00FF),
-                              const Color(0xFF0EA5E9), const Color(0xFFF59E0B),
-                              const Color(0xFFEC4899), const Color(0xFF8B5CF6),
-                            ];
-                            final accent = colors[index % colors.length];
-                            return GestureDetector(
-                              onTap: () => setState(() {
-                                if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); } else if (_selectedIds.isNotEmpty) { _selectedIds.add(studentId!); }
-                              }),
-                              onLongPress: () => setState(() {
-                                if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); } else { _selectedIds.add(studentId!); }
-                              }),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                margin: const EdgeInsets.only(bottom: 10),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(18),
-                                  color: isSelected ? Colors.red.withOpacity(0.12) : accent.withOpacity(0.08),
-                                  border: Border.all(
-                                    color: isSelected ? Colors.redAccent.withOpacity(0.5) : accent.withOpacity(0.25),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 42, height: 42,
-                                            decoration: BoxDecoration(
-                                              color: isSelected ? Colors.red.withOpacity(0.2) : accent.withOpacity(0.18),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: isSelected ? Colors.redAccent.withOpacity(0.4) : accent.withOpacity(0.3), width: 1),
-                                            ),
-                                            child: isSelected
-                                                ? const Icon(Icons.check_rounded, color: Colors.redAccent, size: 20)
-                                                : Center(child: Text(
-                                                    (student['name']?.toString().isNotEmpty == true ? student['name'].toString() : student['phone']?.toString() ?? 'S').substring(0, 1),
-                                                    style: TextStyle(color: accent, fontSize: 16, fontWeight: FontWeight.w800),
-                                                  )),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(student['name']?.toString().isNotEmpty == true ? student['name'] : 'No Name',
-                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                                                const SizedBox(height: 3),
-                                                Row(
-                                                  children: [
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: accent.withOpacity(0.15),
-                                                        borderRadius: BorderRadius.circular(6),
-                                                      ),
-                                                      child: Text(
-                                                        'Class: ' + (student['studentClass']?.toString().isNotEmpty == true ? student['studentClass'] : 'N/A'),
-                                                        style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w600),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Icon(Icons.person_rounded, color: Colors.white.withOpacity(0.2), size: 18),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      : _buildClassWiseList(),
                 ),
               ],
             ),
@@ -2558,8 +2474,324 @@ class _UploadStudentDataPageState extends State<UploadStudentDataPage> {
       ),
     );
   }
+  Widget _buildClassWiseList() {
+    final List<Color> classColors = [const Color(0xFF10B981), const Color(0xFF6C00FF), const Color(0xFF0EA5E9), const Color(0xFFF59E0B), const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
+    final Map<String, List<dynamic>> grouped = {};
+    for (final s in _students) {
+      final cls = (s['studentClass']?.toString().trim().isNotEmpty == true) ? s['studentClass'].toString().trim().toUpperCase() : 'NO CLASS';
+      grouped.putIfAbsent(cls, () => []).add(s);
+    }
+    final classes = grouped.keys.toList()..sort();
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      itemCount: classes.length,
+      itemBuilder: (context, i) {
+        final cls = classes[i];
+        final students = grouped[cls]!;
+        final accent = classColors[i % classColors.length];
+        return GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClassStudentsPage(className: cls, students: students, accent: accent))).then((_) => _loadStudents()),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: accent.withOpacity(0.07), border: Border.all(color: accent.withOpacity(0.25), width: 1)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(children: [
+                    Container(width: 48, height: 48,
+                      decoration: BoxDecoration(gradient: LinearGradient(colors: [accent, accent.withOpacity(0.6)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: accent.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))]),
+                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 22)),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(cls, style: TextStyle(color: accent, fontSize: 16, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(' student', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12)),
+                    ])),
+                    Container(width: 32, height: 32,
+                      decoration: BoxDecoration(color: accent.withOpacity(0.15), borderRadius: BorderRadius.circular(9), border: Border.all(color: accent.withOpacity(0.3))),
+                      child: Icon(Icons.chevron_right_rounded, color: accent, size: 18)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
+class ClassStudentsPage extends StatefulWidget {
+  final String className;
+  final List<dynamic> students;
+  final Color accent;
+  const ClassStudentsPage({super.key, required this.className, required this.students, required this.accent});
+  @override
+  State<ClassStudentsPage> createState() => _ClassStudentsPageState();
+}
+
+class _ClassStudentsPageState extends State<ClassStudentsPage> {
+  late List<dynamic> _students;
+  final Set<String> _selectedIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _students = List.from(widget.students);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.accent;
+    return Scaffold(
+      backgroundColor: const Color(0xFF060818),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 1)),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [accent, accent.withOpacity(0.7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(Icons.school_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(widget.className, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3)),
+                            Text('${_students.length} students', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      if (_selectedIds.isNotEmpty)
+                        GestureDetector(
+                          onTap: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Delete Students'),
+                                content: Text('Move ${_selectedIds.length} student(s) to recycle bin?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              for (final id in _selectedIds.toList()) {
+                                await ApiService.deleteStudent(id);
+                              }
+                              setState(() {
+                                _students.removeWhere((s) => _selectedIds.contains((s['_id'] ?? s['id'])?.toString()));
+                                _selectedIds.clear();
+                              });
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Students moved to recycle bin'), backgroundColor: Colors.orange));
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.red.withOpacity(0.4)),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 16),
+                              const SizedBox(width: 5),
+                              Text('${_selectedIds.length}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 13)),
+                            ]),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.14)),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFF060818), Color(0xFF0C0D2E), Color(0xFF080F22), Color(0xFF040810)],
+                stops: [0.0, 0.3, 0.65, 1.0],
+              ),
+            ),
+          ),
+          Positioned(top: -80, left: -80,
+            child: Container(width: 260, height: 260,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [accent.withOpacity(0.18), Colors.transparent])))),
+          Positioned(bottom: -60, right: -60,
+            child: Container(width: 220, height: 220,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [accent.withOpacity(0.12), Colors.transparent])))),
+          SafeArea(
+            child: _students.isEmpty
+                ? Center(
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Container(width: 64, height: 64,
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.1))),
+                        child: Icon(Icons.person_off_rounded, color: Colors.white.withOpacity(0.25), size: 28)),
+                      const SizedBox(height: 12),
+                      Text('No students in this class', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14)),
+                    ]),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: _students.length,
+                    itemBuilder: (context, index) {
+                      final student = _students[index];
+                      final studentId = (student['_id'] ?? student['id'])?.toString();
+                      final isSelected = _selectedIds.contains(studentId);
+                      final name = student['name']?.toString().isNotEmpty == true ? student['name'] : 'No Name';
+                      final phone = student['phone']?.toString() ?? '';
+                      final rollNo = student['rollNo']?.toString() ?? '';
+                      final dob = student['dob']?.toString().split('T')[0] ?? '';
+                      final location = student['location']?.toString() ?? '';
+                      final isPaid = student['status']?.toString() == 'succeed';
+                      final initial = (student['name']?.toString().isNotEmpty == true
+                          ? student['name'].toString() : phone.isNotEmpty ? phone : 'S')[0];
+                      final List<Color> colors = [accent, const Color(0xFF6C00FF), const Color(0xFF0EA5E9),
+                        const Color(0xFFF59E0B), const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
+                      final c = colors[index % colors.length];
+                      return GestureDetector(
+                        onTap: () => setState(() {
+                          if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); }
+                          else if (_selectedIds.isNotEmpty) { _selectedIds.add(studentId!); }
+                        }),
+                        onLongPress: () => setState(() {
+                          if (_selectedIds.contains(studentId)) { _selectedIds.remove(studentId); }
+                          else { _selectedIds.add(studentId!); }
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            color: isSelected ? Colors.red.withOpacity(0.1) : c.withOpacity(0.07),
+                            border: Border.all(color: isSelected ? Colors.redAccent.withOpacity(0.4) : c.withOpacity(0.22), width: 1),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44, height: 44,
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? Colors.red.withOpacity(0.2) : c.withOpacity(0.18),
+                                        borderRadius: BorderRadius.circular(13),
+                                        border: Border.all(color: isSelected ? Colors.redAccent.withOpacity(0.4) : c.withOpacity(0.3)),
+                                      ),
+                                      child: isSelected
+                                          ? const Icon(Icons.check_rounded, color: Colors.redAccent, size: 20)
+                                          : Center(child: Text(initial, style: TextStyle(color: c, fontSize: 17, fontWeight: FontWeight.w800))),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                                          const SizedBox(height: 3),
+                                          Row(children: [
+                                            if (rollNo.isNotEmpty) ...[
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                                                child: Text('Roll: $rollNo', style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w600)),
+                                              ),
+                                              const SizedBox(width: 6),
+                                            ],
+                                            if (phone.isNotEmpty)
+                                              Text(phone, style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 10)),
+                                          ]),
+                                          if (dob.isNotEmpty || location.isNotEmpty) ...[
+                                            const SizedBox(height: 3),
+                                            Row(children: [
+                                              if (location.isNotEmpty) ...[
+                                                Icon(Icons.location_on_rounded, color: Colors.white.withOpacity(0.3), size: 11),
+                                                const SizedBox(width: 3),
+                                                Expanded(child: Text(location, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10), overflow: TextOverflow.ellipsis)),
+                                                const SizedBox(width: 8),
+                                              ],
+                                              if (dob.isNotEmpty)
+                                                Text(dob, style: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 10)),
+                                            ]),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: (isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: (isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withOpacity(0.3)),
+                                      ),
+                                      child: Text(
+                                        isPaid ? 'Paid' : 'Pending',
+                                        style: TextStyle(
+                                          color: isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                          fontSize: 10, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class LocationStudentsPage extends StatefulWidget {
   final String locationName;
@@ -5756,7 +5988,6 @@ class BackupPage extends StatefulWidget {
 class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateMixin {
   List<dynamic> _students = [];
   bool _isLoading = true;
-  bool _isDownloading = false;
 
   static const _bg     = Color(0xFF060818);
   static const _card   = Color(0xFF1A1A2E);
@@ -5788,130 +6019,8 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
   }
 
 
-  Future<void> _downloadPdf(List<dynamic> students, String title, bool isPaid) async {
-    setState(() => _isDownloading = true);
-    try {
-      final pdf = pw.Document();
-      final color = isPaid ? PdfColors.green800 : PdfColors.orange800;
-      final headers = ['Name', 'Phone', 'Roll No', 'Class', 'Location', isPaid ? 'Amt Paid' : 'Due'];
 
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(24),
-          build: (ctx) => [
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: pw.BoxDecoration(color: color, borderRadius: pw.BorderRadius.circular(8)),
-              child: pw.Text(title,
-                style: pw.TextStyle(color: PdfColors.white, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text('Total: ${students.length} students  Ã¢â‚¬Â¢  Generated: ${DateTime.now().toString().split('.')[0]}',
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-            pw.SizedBox(height: 14),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(2.5),
-                1: const pw.FlexColumnWidth(2),
-                2: const pw.FlexColumnWidth(1.5),
-                3: const pw.FlexColumnWidth(1.5),
-                4: const pw.FlexColumnWidth(2),
-                5: const pw.FlexColumnWidth(1.5),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: pw.BoxDecoration(color: color),
-                  children: headers.map((h) => pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    child: pw.Text(h, style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                  )).toList(),
-                ),
-                ...students.asMap().entries.map((e) {
-                  final i = e.key; final s = e.value;
-                  final bg = i.isEven ? PdfColors.grey100 : PdfColors.white;
-                  return pw.TableRow(
-                    decoration: pw.BoxDecoration(color: bg),
-                    children: [
-                      s['name']?.toString() ?? '',
-                      s['phone']?.toString() ?? '',
-                      s['rollNo']?.toString() ?? '',
-                      s['studentClass']?.toString() ?? '',
-                      s['location']?.toString() ?? '',
-                      isPaid ? (s['amountPaid']?.toString() ?? '0') : (s['totalDue']?.toString() ?? '0'),
-                    ].map((v) => pw.Padding(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                      child: pw.Text(v, style: const pw.TextStyle(fontSize: 8)),
-                    )).toList(),
-                  );
-                }),
-              ],
-            ),
-          ],
-        ),
-      );
-      await Printing.layoutPdf(onLayout: (_) async => pdf.save());
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF failed: $e'), backgroundColor: Colors.red));
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
 
-  void _showDownloadOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 16),
-            const Text('Backup Options', style: TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 16),
-            // Class-wise view
-            _downloadTile(Icons.school_rounded, 'Class-wise View', 'View paid students by class & section', const Color(0xFF6C00FF),
-              () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ClassSectionBackupPage())); }),
-            const SizedBox(height: 10),
-            _downloadTile(Icons.picture_as_pdf_rounded, 'All Students PDF', 'Download all students report', _accent,
-              () { Navigator.pop(context); _downloadPdf(_students, 'All Students Report', true); }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _downloadTile(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(children: [
-          Container(width: 40, height: 40,
-            decoration: BoxDecoration(color: color.withOpacity(0.18), borderRadius: BorderRadius.circular(11)),
-            child: Icon(icon, color: color, size: 20)),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(color: _tp, fontWeight: FontWeight.w700, fontSize: 14)),
-            Text(subtitle, style: const TextStyle(color: _ts, fontSize: 11)),
-          ])),
-          Icon(Icons.picture_as_pdf_rounded, color: color, size: 20),
-        ]),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -5944,20 +6053,18 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
                     const Expanded(child: Text('Back Up',
                       style: TextStyle(color: _tp, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: -0.3))),
                     GestureDetector(
-                      onTap: _isDownloading ? null : _showDownloadOptions,
+                      onTap: () => _downloadAllClassesPdf(_students),
                       child: Container(
                         width: 36, height: 36,
                         decoration: BoxDecoration(
-                          color: _accent.withOpacity(0.15),
+                          color: const Color(0xFF00CCFF).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _accent.withOpacity(0.35)),
+                          border: Border.all(color: const Color(0xFF00CCFF).withOpacity(0.35)),
                         ),
-                        child: _isDownloading
-                            ? const Padding(padding: EdgeInsets.all(8),
-                                child: CircularProgressIndicator(color: _accent, strokeWidth: 2))
-                            : const Icon(Icons.download_rounded, color: _accent, size: 18),
+                        child: const Icon(Icons.download_rounded, color: Color(0xFF00CCFF), size: 18),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -6024,171 +6131,199 @@ class _BackupPageState extends State<BackupPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _studentList(List<dynamic> students, Color accent) {
-    final List<String> classOrder = [
-      'All', 'LKG', 'UKG',
-      '1', '2', '3', '4', '5', '6',
-      '7', '8', '9', '10', '11', '12',
-    ];
-    String selectedClass = 'All';
-
-    String extractClass(dynamic s) {
-      final raw = (s['studentClass']?.toString() ?? '').trim().toUpperCase();
-      if (raw.startsWith('LKG')) return 'LKG';
-      if (raw.startsWith('UKG')) return 'UKG';
-      final m = RegExp(r'^(\d+)').firstMatch(raw);
-      return m != null ? m.group(1)! : '';
-    }
-
-    return StatefulBuilder(
-      builder: (context, setLocal) {
-        final filtered = selectedClass == 'All'
-            ? students
-            : students.where((s) => extractClass(s) == selectedClass).toList();
-
-        if (students.isEmpty) {
-          return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 64, height: 64,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.1))),
-              child: Icon(Icons.person_off_rounded, color: Colors.white.withOpacity(0.25), size: 28)),
-            const SizedBox(height: 12),
-            Text('No students', style: TextStyle(color: _ts, fontSize: 14, fontWeight: FontWeight.w500)),
-          ]));
-        }
-
-        return Column(
-          children: [
-            // Class filter chips
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.chevron_left_rounded, color: Colors.white54, size: 14),
-                  Expanded(
-                    child: SizedBox(
-                      height: 32,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: classOrder.length,
-                        itemBuilder: (context, i) {
-                          final cls = classOrder[i];
-                          final isSelected = selectedClass == cls;
-                          final label = (cls == 'LKG' || cls == 'UKG' || cls == 'All')
-                              ? cls
-                              : '${cls}th';
-                          return GestureDetector(
-                            onTap: () => setLocal(() => selectedClass = cls),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: MediaQuery.of(context).size.width * 0.22,
-                              margin: const EdgeInsets.only(right: 6),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSelected ? accent : Colors.white.withOpacity(0.07),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSelected ? accent : Colors.white.withOpacity(0.15),
-                                ),
-                              ),
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.55),
-                                  fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 14),
-                ],
-              ),
+  Future<void> _downloadAllClassesPdf(List<dynamic> students) async {
+    try {
+      final Map<String, List<dynamic>> grouped = {};
+      for (final s in students) {
+        final cls = (s['studentClass']?.toString().trim().isNotEmpty == true) ? s['studentClass'].toString().trim().toUpperCase() : 'NO CLASS';
+        grouped.putIfAbsent(cls, () => []).add(s);
+      }
+      final classes = grouped.keys.toList()..sort();
+      final pdf = pw.Document();
+      for (final cls in classes) {
+        final clsStudents = grouped[cls]!;
+        pdf.addPage(pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (_) => [
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: pw.BoxDecoration(color: PdfColors.indigo700, borderRadius: pw.BorderRadius.circular(8)),
+              child: pw.Text(' - Student Report',
+                style: pw.TextStyle(color: PdfColors.white, fontSize: 16, fontWeight: pw.FontWeight.bold)),
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: filtered.isEmpty
-                  ? Center(
-                      child: Text('No students in this class',
-                        style: TextStyle(color: _ts, fontSize: 13, fontWeight: FontWeight.w500)),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final s = filtered[index];
-                        final name  = s['name']?.toString() ?? '';
-                        final phone = s['phone']?.toString() ?? '';
-                        final loc   = s['location']?.toString() ?? '';
-                        final amt   = s['amountPaid'] ?? s['totalDue'] ?? 0;
-                        final initial = name.isNotEmpty ? name[0].toUpperCase() : (phone.isNotEmpty ? phone[0] : 'S');
-                        final colors = [_accent, const Color(0xFF6C63FF), _green, _amber, const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
-                        final c = colors[index % colors.length];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: c.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: c.withOpacity(0.22)),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                child: Row(children: [
-                                  Container(width: 42, height: 42,
-                                    decoration: BoxDecoration(color: c.withOpacity(0.18), borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: c.withOpacity(0.3))),
-                                    child: Center(child: Text(initial, style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w800)))),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Text(name.isNotEmpty ? name : phone,
-                                      style: const TextStyle(color: _tp, fontWeight: FontWeight.w700, fontSize: 14)),
-                                    const SizedBox(height: 3),
-                                    Row(children: [
-                                      if (phone.isNotEmpty) ...[
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: c.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
-                                          child: Text(phone, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w600))),
-                                        const SizedBox(width: 6),
-                                      ],
-                                      if (loc.isNotEmpty)
-                                        Expanded(child: Text(loc, style: const TextStyle(color: _ts, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                                    ]),
-                                  ])),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: accent.withOpacity(0.14),
-                                      borderRadius: BorderRadius.circular(9),
-                                      border: Border.all(color: accent.withOpacity(0.3)),
-                                    ),
-                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      Icon(Icons.currency_rupee_rounded, color: accent, size: 11),
-                                      Text('$amt', style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700)),
-                                    ]),
-                                  ),
-                                ]),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+            pw.SizedBox(height: 6),
+            pw.Text('Total:  students  â€¢  Generated: ',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            pw.SizedBox(height: 12),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              columnWidths: {0: const pw.FlexColumnWidth(2.5), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(1.5), 3: const pw.FlexColumnWidth(2), 4: const pw.FlexColumnWidth(1.5)},
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.indigo700),
+                  children: ['Name', 'Phone', 'Roll No', 'Location', 'Status'].map((h) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    child: pw.Text(h, style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  )).toList(),
+                ),
+                ...clsStudents.asMap().entries.map((e) {
+                  final i = e.key; final s = e.value;
+                  return pw.TableRow(
+                    decoration: pw.BoxDecoration(color: i.isEven ? PdfColors.grey100 : PdfColors.white),
+                    children: [
+                      s['name']?.toString() ?? '',
+                      s['phone']?.toString() ?? '',
+                      s['rollNo']?.toString() ?? '',
+                      s['location']?.toString() ?? '',
+                      s['status']?.toString() == 'succeed' ? 'Paid' : 'Pending',
+                    ].map((v) => pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                      child: pw.Text(v, style: const pw.TextStyle(fontSize: 8)),
+                    )).toList(),
+                  );
+                }),
+              ],
             ),
           ],
+        ));
+      }
+      await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF failed: '), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _downloadClassPdf(String className, List<dynamic> students) async {
+    try {
+      final pdf = pw.Document();
+      pdf.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        build: (_) => [
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: pw.BoxDecoration(color: PdfColors.indigo700, borderRadius: pw.BorderRadius.circular(8)),
+            child: pw.Text(' - Student Report',
+              style: pw.TextStyle(color: PdfColors.white, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text('Total:  students  â€¢  Generated: ',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+          pw.SizedBox(height: 12),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+            columnWidths: {0: const pw.FlexColumnWidth(2.5), 1: const pw.FlexColumnWidth(2), 2: const pw.FlexColumnWidth(1.5), 3: const pw.FlexColumnWidth(2), 4: const pw.FlexColumnWidth(1.5)},
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.indigo700),
+                children: ['Name', 'Phone', 'Roll No', 'Location', 'Status'].map((h) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                  child: pw.Text(h, style: pw.TextStyle(color: PdfColors.white, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                )).toList(),
+              ),
+              ...students.asMap().entries.map((e) {
+                final i = e.key; final s = e.value;
+                return pw.TableRow(
+                  decoration: pw.BoxDecoration(color: i.isEven ? PdfColors.grey100 : PdfColors.white),
+                  children: [
+                    s['name']?.toString() ?? '',
+                    s['phone']?.toString() ?? '',
+                    s['rollNo']?.toString() ?? '',
+                    s['location']?.toString() ?? '',
+                    s['status']?.toString() == 'succeed' ? 'Paid' : 'Pending',
+                  ].map((v) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                    child: pw.Text(v, style: const pw.TextStyle(fontSize: 8)),
+                  )).toList(),
+                );
+              }),
+            ],
+          ),
+        ],
+      ));
+      await Printing.layoutPdf(onLayout: (_) async => pdf.save());
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF failed: '), backgroundColor: Colors.red));
+    }
+  }
+
+  Widget _studentList(List<dynamic> students, Color accent) {
+    if (students.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(width: 64, height: 64,
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.1))),
+          child: Icon(Icons.person_off_rounded, color: Colors.white.withOpacity(0.25), size: 28)),
+        const SizedBox(height: 12),
+        Text('No students', style: TextStyle(color: _ts, fontSize: 14, fontWeight: FontWeight.w500)),
+      ]));
+    }
+    final List<Color> classColors = [const Color(0xFF10B981), const Color(0xFF6C00FF), const Color(0xFF0EA5E9), const Color(0xFFF59E0B), const Color(0xFFEC4899), const Color(0xFF8B5CF6)];
+    final Map<String, List<dynamic>> grouped = {};
+    for (final s in students) {
+      final cls = (s['studentClass']?.toString().trim().isNotEmpty == true) ? s['studentClass'].toString().trim().toUpperCase() : 'NO CLASS';
+      grouped.putIfAbsent(cls, () => []).add(s);
+    }
+    final classes = grouped.keys.toList()..sort();
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      itemCount: classes.length,
+      itemBuilder: (context, i) {
+        final cls = classes[i];
+        final clsStudents = grouped[cls]!;
+        final c = classColors[i % classColors.length];
+        return GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ClassStudentsPage(className: cls, students: clsStudents, accent: c),
+          )),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: c.withOpacity(0.07), border: Border.all(color: c.withOpacity(0.25), width: 1)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(children: [
+                    Container(width: 48, height: 48,
+                      decoration: BoxDecoration(gradient: LinearGradient(colors: [c, c.withOpacity(0.6)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: c.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))]),
+                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 22)),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(cls, style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(' student', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12)),
+                    ])),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () => _downloadClassPdf(cls, clsStudents),
+                      child: Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: c.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: c.withOpacity(0.4)),
+                        ),
+                        child: Icon(Icons.download_rounded, color: c, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(width: 32, height: 32,
+                      decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(9), border: Border.all(color: c.withOpacity(0.3))),
+                      child: Icon(Icons.chevron_right_rounded, color: c, size: 18)),
+                  ]),
+                ),
+              ),
+            ),
+          ),
         );
       },
     );
   }
 }
+
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
 
